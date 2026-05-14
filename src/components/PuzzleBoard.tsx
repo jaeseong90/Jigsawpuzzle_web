@@ -16,13 +16,13 @@ import {
   type SavedGameSnapshot,
 } from "@/lib/savedGame";
 import { playSnap, playSolve } from "@/lib/sound";
+import type { Difficulty } from "@/lib/difficulty";
+import { getDifficultyMeta } from "@/lib/difficulty";
 
 type Piece = {
-  // Stable identity. id encodes the piece's original (row, col) for clarity.
   id: number;
   origRow: number;
   origCol: number;
-  // Where the piece is currently placed in the grid (0..rows*cols-1).
   currentIndex: number;
 };
 
@@ -36,13 +36,10 @@ type Props = {
   stageLabel?: string;
   stageId?: number;
   totalStages?: number;
-  // Time in ms below which the player earns 3 stars (par). 1.8× par → 2 stars; else 1.
   parTimeMs?: number;
-  // Best clear time the player has previously recorded for this stage. Used to
-  // detect new records on completion.
   previousBestMs?: number;
-  // True when this stage matches the daily challenge for today.
   isDaily?: boolean;
+  difficulty?: Difficulty;
   onSolved?: (durationMs: number, stars: number, hintsUsed: number) => void;
   onExit?: () => void;
   onNext?: () => void;
@@ -75,8 +72,6 @@ export default function PuzzleBoard(props: Props) {
       const availW = rect.width;
       const availH = rect.height;
       if (availW <= 0 || availH <= 0) return;
-
-      // Pieces themselves should be roughly square so the puzzle stays readable.
       const tileTarget = Math.min(availW / cols, availH / rows);
       const w = Math.floor(tileTarget * cols);
       const h = Math.floor(tileTarget * rows);
@@ -93,12 +88,16 @@ export default function PuzzleBoard(props: Props) {
   }, [imageAspect, rows, cols]);
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-amber-50">
+    <div
+      className="flex h-[100dvh] flex-col"
+      style={{ background: "var(--bg-app)" }}
+    >
       <Header
         isBoss={props.isBoss}
         stageLabel={props.stageLabel}
         stageId={props.stageId}
         totalStages={props.totalStages}
+        difficulty={props.difficulty}
         onExit={props.onExit}
       />
       <div
@@ -117,13 +116,14 @@ export default function PuzzleBoard(props: Props) {
             parTimeMs={props.parTimeMs}
             previousBestMs={props.previousBestMs}
             isDaily={props.isDaily}
+            difficulty={props.difficulty}
             onSolved={props.onSolved}
             onExit={props.onExit}
             onNext={props.onNext}
             hasNext={props.hasNext}
           />
         ) : (
-          <div className="text-amber-700">준비 중...</div>
+          <div style={{ color: "var(--ink-mute)" }}>준비 중…</div>
         )}
       </div>
     </div>
@@ -135,34 +135,51 @@ function Header({
   stageLabel,
   stageId,
   totalStages,
+  difficulty,
   onExit,
 }: {
   isBoss?: boolean;
   stageLabel?: string;
   stageId?: number;
   totalStages?: number;
+  difficulty?: Difficulty;
   onExit?: () => void;
 }) {
+  const diff = difficulty ? getDifficultyMeta(difficulty) : null;
   return (
-    <div className="flex items-center justify-between px-4 py-3 text-sm">
+    <div className="flex items-center justify-between px-4 py-3">
       <button
         type="button"
         onClick={onExit}
-        className="rounded-full bg-white px-3 py-1.5 shadow-sm text-amber-900 font-medium"
+        className="press-95 rounded-full px-3 py-1.5 text-sm font-medium"
+        style={{
+          background: "var(--bg-surface)",
+          color: "var(--ink-2)",
+          border: "1px solid var(--line)",
+        }}
       >
         ← 목록
       </button>
-      <div
-        className={`px-3 py-1.5 rounded-full font-semibold ${
-          isBoss
-            ? "bg-rose-600 text-white shadow-sm"
-            : "bg-white text-amber-900 shadow-sm"
-        }`}
-      >
-        {isBoss ? `👑 ${stageLabel ?? "보스"}` : stageLabel ?? "스테이지"}
+      <div className="flex flex-col items-center">
+        <div
+          className="text-[10px] tracking-[0.18em] uppercase font-semibold"
+          style={{ color: isBoss ? "var(--danger)" : "var(--ink-mute)" }}
+        >
+          {isBoss ? "Boss" : "Stage"}
+          {diff ? ` · ${diff.en}` : ""}
+        </div>
+        <div
+          className="text-[15px] font-semibold leading-tight"
+          style={{ color: "var(--ink-1)" }}
+        >
+          {stageLabel ?? "Puzzle"}
+        </div>
       </div>
-      <div className="text-[11px] font-medium text-amber-800/80 tabular-nums min-w-[64px] text-right">
-        {stageId != null && totalStages != null ? `${stageId} / ${totalStages}` : ""}
+      <div
+        className="text-[11px] font-semibold tabular-nums min-w-[64px] text-right"
+        style={{ color: "var(--ink-mute)" }}
+      >
+        {stageId != null && totalStages != null ? `${stageId}/${totalStages}` : ""}
       </div>
     </div>
   );
@@ -178,6 +195,7 @@ type BoardProps = {
   parTimeMs?: number;
   previousBestMs?: number;
   isDaily?: boolean;
+  difficulty?: Difficulty;
   onSolved?: (durationMs: number, stars: number, hintsUsed: number) => void;
   onExit?: () => void;
   onNext?: () => void;
@@ -236,7 +254,6 @@ function buildShuffledPieces(rows: number, cols: number): Piece[] {
       pieces.push({ id: r * cols + c, origRow: r, origCol: c, currentIndex: 0 });
     }
   }
-  // Fisher-Yates on the index list. Re-shuffle if it happens to be already solved.
   const indices = Array.from({ length: total }, (_, i) => i);
   for (let attempt = 0; attempt < 5; attempt++) {
     for (let i = total - 1; i > 0; i--) {
@@ -258,6 +275,15 @@ function buildShuffledPieces(rows: number, cols: number): Piece[] {
   return pieces;
 }
 
+function isEdgePiece(p: Piece, rows: number, cols: number): boolean {
+  return (
+    p.origRow === 0 ||
+    p.origCol === 0 ||
+    p.origRow === rows - 1 ||
+    p.origCol === cols - 1
+  );
+}
+
 function Board({
   imageSrc,
   rows,
@@ -268,6 +294,7 @@ function Board({
   parTimeMs,
   previousBestMs,
   isDaily,
+  difficulty,
   onSolved,
   onExit,
   onNext,
@@ -285,8 +312,6 @@ function Board({
   const [dragHeadId, setDragHeadId] = useState<number | null>(null);
   const [dragDelta, setDragDelta] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [hoverDelta, setHoverDelta] = useState<{ row: number; col: number } | null>(null);
-  // Treat the resumed elapsed time as "already played": shift startedAt backwards so
-  // the on-screen timer continues from where the previous session left off.
   const [startedAt, setStartedAt] = useState<number>(() => Date.now() - initial.elapsedMs);
   const [now, setNow] = useState<number>(() => Date.now());
   const [solved, setSolved] = useState(false);
@@ -303,6 +328,18 @@ function Board({
   const [undosLeft, setUndosLeft] = useState(initialUndos);
   const [moveCount, setMoveCount] = useState(0);
 
+  // Flow-state tracking — consecutive snap-joins within a tight window light up
+  // a subtle ring around the timer. No popups, no number explosions.
+  const [flowCount, setFlowCount] = useState(0);
+  const [flowBest, setFlowBest] = useState(0);
+  const lastSnapAtRef = useRef<number>(0);
+  const flowDecayTimerRef = useRef<number | null>(null);
+
+  // Tool toggles
+  const [edgeHighlight, setEdgeHighlight] = useState(false);
+  // Explicit pause (independent from visibilitychange).
+  const [manualPaused, setManualPaused] = useState(false);
+
   const dragOffsetRef = useRef<{
     ox: number;
     oy: number;
@@ -317,13 +354,14 @@ function Board({
     return () => window.clearInterval(id);
   }, [solved]);
 
-  // Pause the timer while the tab is hidden so background time doesn't inflate the record.
+  // Auto-pause on tab hide.
   useEffect(() => {
     const onVis = () => {
       if (document.hidden) {
-        setPausedAt(Date.now());
+        setPausedAt((prev) => prev ?? Date.now());
       } else {
         setPausedAt((prev) => {
+          if (manualPaused) return prev;
           if (prev != null) setPausedTotal((t) => t + (Date.now() - prev));
           return null;
         });
@@ -331,17 +369,27 @@ function Board({
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, []);
+  }, [manualPaused]);
 
-  // Give the player a brief moment to see the completed image before showing the modal.
+  // Manual pause syncs with pausedAt.
+  useEffect(() => {
+    if (manualPaused) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPausedAt((prev) => prev ?? Date.now());
+    } else {
+      setPausedAt((prev) => {
+        if (prev != null) setPausedTotal((t) => t + (Date.now() - prev));
+        return null;
+      });
+    }
+  }, [manualPaused]);
+
   useEffect(() => {
     if (!solved) return;
     const t = window.setTimeout(() => setShowSolveModal(true), 800);
     return () => window.clearTimeout(t);
   }, [solved]);
 
-  // Snapshot the in-progress puzzle so closing the tab and returning resumes
-  // exactly where the player left off.
   useEffect(() => {
     if (stageId == null || solved) return;
     const effectiveStop = pausedAt ?? Date.now();
@@ -360,8 +408,6 @@ function Board({
     });
   }, [pieces, hintsLeft, hintsUsed, startedAt, pausedTotal, pausedAt, stageId, solved]);
 
-  // Periodic snapshot so a long idle-then-crash still preserves the timer.
-  // We read state from refs to avoid recreating the interval on every change.
   const snapshotStateRef = useRef({
     pieces,
     hintsLeft,
@@ -402,7 +448,6 @@ function Board({
     return () => window.clearInterval(id);
   }, [stageId, solved]);
 
-  // Also persist on tab hide so the snapshot survives mobile suspensions.
   useEffect(() => {
     const onVis = () => {
       if (!document.hidden || stageId == null || solved) return;
@@ -426,7 +471,6 @@ function Board({
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [stageId, solved]);
 
-  // Once solved, drop the snapshot so the next entry is a fresh shuffle.
   useEffect(() => {
     if (solved) clearSavedGame();
   }, [solved]);
@@ -438,7 +482,7 @@ function Board({
 
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>, piece: Piece) => {
-      if (solved) return;
+      if (solved || pausedAt != null) return;
       const board = boardRef.current;
       if (!board) return;
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -460,7 +504,7 @@ function Board({
       setDragDelta({ x: 0, y: 0 });
       setHoverDelta({ row: 0, col: 0 });
     },
-    [solved, cols, pieceW, pieceH, pieces, joined]
+    [solved, pausedAt, cols, pieceW, pieceH, pieces, joined]
   );
 
   const onPointerMove = useCallback(
@@ -472,7 +516,6 @@ function Board({
       const rect = board.getBoundingClientRect();
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
-      // Head piece's desired top-left given the finger position.
       const headX = px - off.ox;
       const headY = py - off.oy;
       const dx = headX - off.headStartCol * pieceW;
@@ -485,6 +528,19 @@ function Board({
     },
     [dragGroup, pieceW, pieceH]
   );
+
+  const bumpFlow = useCallback(() => {
+    const now = Date.now();
+    const within = now - lastSnapAtRef.current < 4500;
+    const next = within ? Math.min(99, flowCount + 1) : 1;
+    setFlowCount(next);
+    setFlowBest((b) => Math.max(b, next));
+    lastSnapAtRef.current = now;
+    if (flowDecayTimerRef.current) window.clearTimeout(flowDecayTimerRef.current);
+    flowDecayTimerRef.current = window.setTimeout(() => {
+      setFlowCount(0);
+    }, 5500);
+  }, [flowCount]);
 
   const finishDrag = useCallback(
     (pointerId: number) => {
@@ -508,7 +564,6 @@ function Board({
         const next = applyGroupMove(prev, groupIds, rDeltaRow, rDeltaCol, rows, cols);
         if (!next) return prev;
 
-        // Record the pre-move snapshot so the undo stack can roll back.
         setHistory((h) => [...h.slice(-9), prev]);
         setMoveCount((n) => n + 1);
 
@@ -527,6 +582,7 @@ function Board({
           const after = countJoinedEdges(next, rows, cols);
           if (after > before) {
             playSnap();
+            bumpFlow();
             if (typeof navigator !== "undefined" && navigator.vibrate) {
               navigator.vibrate(15);
             }
@@ -535,7 +591,21 @@ function Board({
         return next;
       });
     },
-    [dragGroup, dragDelta, pieceW, pieceH, rows, cols, solved, startedAt, pausedTotal, parTimeMs, hintsUsed, onSolved]
+    [
+      dragGroup,
+      dragDelta,
+      pieceW,
+      pieceH,
+      rows,
+      cols,
+      solved,
+      startedAt,
+      pausedTotal,
+      parTimeMs,
+      hintsUsed,
+      onSolved,
+      bumpFlow,
+    ]
   );
 
   const totalPieces = rows * cols;
@@ -547,7 +617,7 @@ function Board({
   const elapsed = Math.max(0, effectiveStop - startedAt - pausedTotal);
 
   const useHint = useCallback(() => {
-    if (solved || hintsLeft <= 0) return;
+    if (solved || hintsLeft <= 0 || pausedAt != null) return;
     setPieces((prev) => {
       const wrong = prev.filter(
         (p) => p.currentIndex !== p.origRow * cols + p.origCol
@@ -568,7 +638,7 @@ function Board({
     setHintsLeft((h) => h - 1);
     setHintsUsed((h) => h + 1);
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(12);
-  }, [solved, hintsLeft, cols]);
+  }, [solved, hintsLeft, cols, pausedAt]);
 
   const replay = useCallback(() => {
     if (reshuffleTimerRef.current) {
@@ -582,17 +652,20 @@ function Board({
     setNow(Date.now());
     setPausedTotal(0);
     setPausedAt(null);
+    setManualPaused(false);
     setHintsLeft(initialHints);
     setHintsUsed(0);
     setHistory([]);
     setUndosLeft(initialUndos);
     setMoveCount(0);
+    setFlowCount(0);
+    setFlowBest(0);
     setSolved(false);
     setShowSolveModal(false);
   }, [rows, cols, initialHints, initialUndos]);
 
   const undo = useCallback(() => {
-    if (solved || undosLeft <= 0 || history.length === 0) return;
+    if (solved || undosLeft <= 0 || history.length === 0 || pausedAt != null) return;
     const last = history[history.length - 1];
     setPieces(last);
     setHistory((h) => h.slice(0, -1));
@@ -603,7 +676,7 @@ function Board({
     setDragDelta({ x: 0, y: 0 });
     setHoverDelta(null);
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
-  }, [solved, undosLeft, history]);
+  }, [solved, undosLeft, history, pausedAt]);
 
   const reshuffle = useCallback(() => {
     if (solved) return;
@@ -626,21 +699,49 @@ function Board({
     setStartedAt(Date.now());
     setPausedTotal(0);
     setPausedAt(null);
+    setManualPaused(false);
     setHintsLeft(initialHints);
     setHintsUsed(0);
     setHistory([]);
     setUndosLeft(initialUndos);
     setMoveCount(0);
+    setFlowCount(0);
+    setFlowBest(0);
   }, [rows, cols, solved, initialHints, initialUndos, reshuffleConfirming]);
+
+  const flowActive = flowCount >= 2;
 
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="flex items-center gap-2">
-        <div className="rounded-full bg-white/90 px-4 py-1.5 text-sm font-medium text-amber-900 tabular-nums shadow-sm">
+        <div
+          className={`rounded-full px-4 py-1.5 text-sm font-medium tabular-nums shadow-sm ${
+            flowActive ? "flow-ring" : ""
+          }`}
+          style={{
+            background: "var(--bg-surface)",
+            color: "var(--ink-1)",
+            border: "1px solid var(--line)",
+          }}
+        >
           {formatTime(elapsed)} · {correctCount}/{totalPieces}
         </div>
+        {flowActive && (
+          <div
+            className="rounded-full px-2.5 py-1 text-[10px] font-bold tracking-[0.14em] uppercase"
+            style={{
+              background: "var(--accent-soft)",
+              color: "var(--accent-soft-fg)",
+            }}
+          >
+            Flow ×{flowCount}
+          </div>
+        )}
         {pausedAt != null && (
-          <div className="rounded-full bg-amber-700 text-white px-2.5 py-1 text-xs font-medium shadow-sm">
+          <div
+            className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+            style={{ background: "var(--ink-2)", color: "var(--bg-surface)" }}
+          >
             일시정지
           </div>
         )}
@@ -649,9 +750,18 @@ function Board({
       <div
         ref={boardRef}
         className={`relative rounded-lg overflow-hidden ${
-          isBoss ? "ring-4 ring-rose-500/60" : "ring-2 ring-amber-700/30"
-        } bg-amber-100/70 shadow-inner ${solved ? "puzzle-solved-pulse" : ""}`}
-        style={{ width: boardSize.w, height: boardSize.h, touchAction: "none" }}
+          solved ? "puzzle-solved-pulse" : ""
+        }`}
+        style={{
+          width: boardSize.w,
+          height: boardSize.h,
+          touchAction: "none",
+          background: "var(--bg-board)",
+          border: isBoss
+            ? "2px solid var(--danger)"
+            : "1px solid var(--line)",
+          boxShadow: "inset 0 0 0 1px var(--line-soft)",
+        }}
       >
         {showPreview && (
           <div
@@ -666,8 +776,6 @@ function Board({
           />
         )}
         {dragGroup && hoverDelta && (() => {
-          // Highlight each cell the group would land on at the current rounded delta.
-          // If any group piece would land out of bounds, show the highlight in red.
           let anyOOB = false;
           const cells: Array<{ r: number; c: number }> = [];
           dragGroup.forEach((id) => {
@@ -683,8 +791,8 @@ function Board({
             }
             cells.push({ r: nr, c: nc });
           });
-          const color = anyOOB ? "rgba(220,38,38,0.6)" : "rgba(180,83,9,0.6)";
-          const bg = anyOOB ? "rgba(220,38,38,0.10)" : "rgba(180,83,9,0.10)";
+          const color = anyOOB ? "rgba(179,53,31,0.7)" : "rgba(138,90,43,0.7)";
+          const bg = anyOOB ? "rgba(179,53,31,0.10)" : "rgba(138,90,43,0.10)";
           return (
             <>
               {cells.map((cell, i) => (
@@ -695,7 +803,7 @@ function Board({
                     width: pieceW,
                     height: pieceH,
                     transform: `translate3d(${cell.c * pieceW}px, ${cell.r * pieceH}px, 0)`,
-                    border: `2px solid ${color}`,
+                    border: `1.5px solid ${color}`,
                     background: bg,
                   }}
                 />
@@ -715,6 +823,7 @@ function Board({
           const y = inGroup ? baseY + dragDelta.y : baseY;
           const j = joined[p.id] ?? { top: false, right: false, bottom: false, left: false };
           const inCorrect = p.currentIndex === p.origRow * cols + p.origCol;
+          const edgeMark = edgeHighlight && isEdgePiece(p, rows, cols);
           return (
             <div
               key={p.id}
@@ -731,16 +840,17 @@ function Board({
                 transition: inGroup
                   ? "none"
                   : "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms",
-                // Drop shadow only while picked up. No inset shadow when not
-                // dragging — borders below handle per-side separation so they
-                // can disappear precisely on the joined edges.
                 boxShadow: inGroup ? "0 10px 24px rgba(0,0,0,0.32)" : "none",
-                outline: isHead ? "2px solid #b45309" : "none",
+                outline: isHead
+                  ? "2px solid var(--accent)"
+                  : edgeMark
+                  ? "2px solid rgba(212,160,92,0.85)"
+                  : "none",
                 outlineOffset: -2,
-                borderTop: j.top ? "0" : "1px solid rgba(255,255,255,0.55)",
-                borderRight: j.right ? "0" : "1px solid rgba(255,255,255,0.55)",
-                borderBottom: j.bottom ? "0" : "1px solid rgba(255,255,255,0.55)",
-                borderLeft: j.left ? "0" : "1px solid rgba(255,255,255,0.55)",
+                borderTop: j.top ? "0" : "1px solid rgba(255,255,255,0.45)",
+                borderRight: j.right ? "0" : "1px solid rgba(255,255,255,0.45)",
+                borderBottom: j.bottom ? "0" : "1px solid rgba(255,255,255,0.45)",
+                borderLeft: j.left ? "0" : "1px solid rgba(255,255,255,0.45)",
               }}
               onPointerDown={(e) => onPointerDown(e, p)}
               onPointerMove={onPointerMove}
@@ -751,116 +861,389 @@ function Board({
         })}
       </div>
 
-      <div className="flex items-center gap-1.5 flex-wrap justify-center">
-        <button
-          type="button"
-          onClick={undo}
-          disabled={solved || undosLeft <= 0 || history.length === 0}
-          className="rounded-full bg-white text-amber-900 px-3 py-2 text-sm font-medium shadow-sm border border-amber-200 active:scale-95 transition-transform disabled:opacity-50"
-        >
-          ↶ 되돌리기 {undosLeft}
-        </button>
-        <button
-          type="button"
-          onClick={useHint}
-          disabled={solved || hintsLeft <= 0}
-          className="rounded-full bg-amber-700 text-white px-3 py-2 text-sm font-semibold shadow-sm active:scale-95 transition-transform disabled:bg-amber-300"
-        >
-          💡 힌트 {hintsLeft}
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowPreview((v) => !v)}
-          className={`rounded-full px-3 py-2 text-sm font-medium shadow-sm active:scale-95 transition-transform border ${
-            showPreview
-              ? "bg-amber-200 text-amber-900 border-amber-300"
-              : "bg-white text-amber-900 border-amber-200"
-          }`}
-        >
-          {showPreview ? "👁 미리보기 ✓" : "👁 미리보기"}
-        </button>
-        <button
-          type="button"
-          onClick={reshuffle}
-          disabled={solved}
-          className={`rounded-full px-3 py-2 text-sm font-medium shadow-sm border active:scale-95 transition-transform disabled:opacity-50 ${
-            reshuffleConfirming
-              ? "bg-rose-600 text-white border-rose-600"
-              : "bg-white text-amber-900 border-amber-200"
-          }`}
-        >
-          {reshuffleConfirming ? "한 번 더 누르기" : "🔀 다시 섞기"}
-        </button>
-      </div>
+      <Toolbar
+        solved={solved}
+        paused={pausedAt != null}
+        manualPaused={manualPaused}
+        onPause={() => setManualPaused((v) => !v)}
+        hintsLeft={hintsLeft}
+        useHint={useHint}
+        undosLeft={undosLeft}
+        canUndo={history.length > 0}
+        undo={undo}
+        showPreview={showPreview}
+        togglePreview={() => setShowPreview((v) => !v)}
+        edgeHighlight={edgeHighlight}
+        toggleEdge={() => setEdgeHighlight((v) => !v)}
+        reshuffleConfirming={reshuffleConfirming}
+        reshuffle={reshuffle}
+      />
 
       {solved && <Confetti count={isBoss ? 60 : 36} />}
 
+      {manualPaused && !solved && (
+        <PauseOverlay onResume={() => setManualPaused(false)} onExit={onExit} />
+      )}
+
       {showSolveModal && (
-        <div className="fixed inset-x-0 bottom-0 z-50 flex items-end justify-center p-3 pointer-events-none solve-sheet-enter">
-          <div className="rounded-2xl bg-white px-6 py-5 text-center shadow-2xl w-full max-w-sm pointer-events-auto">
-            <div className="text-3xl font-bold text-amber-900">
-              {isBoss ? "보스 격파! 👑" : "완성! 🎉"}
-            </div>
-            <StarsRow count={computeStars(elapsed, parTimeMs)} />
-            <div className="mt-2 text-amber-800 text-2xl font-semibold tabular-nums">
-              {formatTime(elapsed)}
-            </div>
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-semibold">
-              {previousBestMs == null || elapsed < previousBestMs ? (
-                <span className="rounded-full bg-amber-700 text-white px-2.5 py-0.5">
-                  🏆 신기록
-                </span>
-              ) : (
-                <span className="rounded-full bg-amber-50 text-amber-700 px-2.5 py-0.5 border border-amber-200">
-                  이전 최고 {formatTime(previousBestMs)}
-                </span>
-              )}
-              {computeStars(elapsed, parTimeMs) === 3 && hintsUsed === 0 && (
-                <span className="rounded-full bg-rose-100 text-rose-700 px-2.5 py-0.5 border border-rose-200">
-                  💎 PERFECT
-                </span>
-              )}
-              {isDaily && (
-                <span className="rounded-full bg-amber-500 text-white px-2.5 py-0.5 border border-amber-500">
-                  ✨ 오늘의 도전
-                </span>
-              )}
-              <span className="rounded-full bg-amber-50 text-amber-700 px-2.5 py-0.5 border border-amber-200">
-                {moveCount}회 이동
-              </span>
-              {hintsUsed > 0 && (
-                <span className="rounded-full bg-amber-50 text-amber-700 px-2.5 py-0.5 border border-amber-200">
-                  힌트 {hintsUsed}
-                </span>
-              )}
-            </div>
-            <div className="mt-5 flex gap-2">
-              <button
-                type="button"
-                onClick={onExit}
-                className="flex-1 rounded-full bg-white text-amber-900 border border-amber-200 px-3 py-3 text-sm font-semibold active:scale-[0.97] transition-transform"
-              >
-                목록
-              </button>
-              <button
-                type="button"
-                onClick={replay}
-                className="flex-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 px-3 py-3 text-sm font-semibold active:scale-[0.97] transition-transform"
-              >
-                🔄 다시
-              </button>
-              <button
-                type="button"
-                onClick={hasNext ? onNext : onExit}
-                className="flex-1 rounded-full bg-amber-700 px-3 py-3 text-sm text-white font-semibold active:scale-[0.97] transition-transform"
-              >
-                {hasNext ? "다음 ▶" : "완료"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <SolveModal
+          isBoss={!!isBoss}
+          isDaily={!!isDaily}
+          difficulty={difficulty}
+          elapsed={elapsed}
+          parTimeMs={parTimeMs}
+          previousBestMs={previousBestMs}
+          moveCount={moveCount}
+          hintsUsed={hintsUsed}
+          flowBest={flowBest}
+          onExit={onExit}
+          onReplay={replay}
+          onNext={hasNext ? onNext : onExit}
+          nextLabel={hasNext ? "다음 ▶" : "완료"}
+        />
       )}
     </div>
+  );
+}
+
+function Toolbar({
+  solved,
+  paused,
+  manualPaused,
+  onPause,
+  hintsLeft,
+  useHint,
+  undosLeft,
+  canUndo,
+  undo,
+  showPreview,
+  togglePreview,
+  edgeHighlight,
+  toggleEdge,
+  reshuffleConfirming,
+  reshuffle,
+}: {
+  solved: boolean;
+  paused: boolean;
+  manualPaused: boolean;
+  onPause: () => void;
+  hintsLeft: number;
+  useHint: () => void;
+  undosLeft: number;
+  canUndo: boolean;
+  undo: () => void;
+  showPreview: boolean;
+  togglePreview: () => void;
+  edgeHighlight: boolean;
+  toggleEdge: () => void;
+  reshuffleConfirming: boolean;
+  reshuffle: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap justify-center px-2">
+      <ToolButton
+        onClick={onPause}
+        disabled={solved}
+        active={manualPaused}
+        label={manualPaused ? "재개" : "일시정지"}
+        glyph={manualPaused ? "▶" : "❚❚"}
+      />
+      <ToolButton
+        onClick={undo}
+        disabled={solved || !canUndo || paused || undosLeft <= 0}
+        label={`되돌리기 ${undosLeft}`}
+        glyph="↶"
+      />
+      <ToolButton
+        onClick={useHint}
+        disabled={solved || hintsLeft <= 0 || paused}
+        accent
+        label={`힌트 ${hintsLeft}`}
+        glyph="✦"
+      />
+      <ToolButton
+        onClick={togglePreview}
+        active={showPreview}
+        label="미리보기"
+        glyph="◐"
+      />
+      <ToolButton
+        onClick={toggleEdge}
+        active={edgeHighlight}
+        label="테두리"
+        glyph="◻"
+      />
+      <ToolButton
+        onClick={reshuffle}
+        disabled={solved}
+        danger={reshuffleConfirming}
+        label={reshuffleConfirming ? "한 번 더" : "다시 섞기"}
+        glyph="⟳"
+      />
+    </div>
+  );
+}
+
+function ToolButton({
+  onClick,
+  disabled,
+  active,
+  accent,
+  danger,
+  label,
+  glyph,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  accent?: boolean;
+  danger?: boolean;
+  label: string;
+  glyph: string;
+}) {
+  const bg = danger
+    ? "var(--danger)"
+    : accent
+    ? "var(--accent)"
+    : active
+    ? "var(--accent-soft)"
+    : "var(--bg-surface)";
+  const fg = danger
+    ? "#fff"
+    : accent
+    ? "var(--accent-fg)"
+    : active
+    ? "var(--accent-soft-fg)"
+    : "var(--ink-2)";
+  const border =
+    accent || danger
+      ? "transparent"
+      : active
+      ? "var(--accent)"
+      : "var(--line)";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="press-95 rounded-full px-3 py-2 text-[12px] font-semibold shadow-sm flex items-center gap-1.5 disabled:opacity-45"
+      style={{
+        background: bg,
+        color: fg,
+        border: `1px solid ${border}`,
+      }}
+    >
+      <span aria-hidden style={{ fontSize: 13 }}>
+        {glyph}
+      </span>
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function PauseOverlay({
+  onResume,
+  onExit,
+}: {
+  onResume: () => void;
+  onExit?: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 fade-in-soft"
+      style={{ background: "var(--bg-overlay)" }}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl px-6 py-6 text-center"
+        style={{ background: "var(--bg-surface)", border: "1px solid var(--line)" }}
+      >
+        <div
+          className="text-[11px] tracking-[0.2em] uppercase font-bold"
+          style={{ color: "var(--ink-mute)" }}
+        >
+          Paused
+        </div>
+        <div
+          className="mt-2 text-2xl font-semibold"
+          style={{ color: "var(--ink-1)" }}
+        >
+          잠시 멈춰뒀어요
+        </div>
+        <div className="mt-1 text-sm" style={{ color: "var(--ink-3)" }}>
+          준비되면 이어서 풀어주세요.
+        </div>
+        <div className="mt-6 flex gap-2">
+          <button
+            type="button"
+            onClick={onExit}
+            className="press-95 flex-1 rounded-full py-3 text-sm font-semibold"
+            style={{
+              background: "var(--bg-elevated)",
+              color: "var(--ink-2)",
+              border: "1px solid var(--line)",
+            }}
+          >
+            목록으로
+          </button>
+          <button
+            type="button"
+            onClick={onResume}
+            className="press-95 flex-1 rounded-full py-3 text-sm font-semibold"
+            style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
+          >
+            이어하기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SolveModal({
+  isBoss,
+  isDaily,
+  difficulty,
+  elapsed,
+  parTimeMs,
+  previousBestMs,
+  moveCount,
+  hintsUsed,
+  flowBest,
+  onExit,
+  onReplay,
+  onNext,
+  nextLabel,
+}: {
+  isBoss: boolean;
+  isDaily: boolean;
+  difficulty?: Difficulty;
+  elapsed: number;
+  parTimeMs?: number;
+  previousBestMs?: number;
+  moveCount: number;
+  hintsUsed: number;
+  flowBest: number;
+  onExit?: () => void;
+  onReplay: () => void;
+  onNext?: () => void;
+  nextLabel: string;
+}) {
+  const stars = computeStars(elapsed, parTimeMs);
+  const isPerfect = stars === 3 && hintsUsed === 0;
+  const isNewRecord = previousBestMs == null || elapsed < previousBestMs;
+  const diff = difficulty ? getDifficultyMeta(difficulty) : null;
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-50 flex items-end justify-center p-3 pointer-events-none solve-sheet-enter">
+      <div
+        className="rounded-2xl px-6 py-5 text-center w-full max-w-sm pointer-events-auto shadow-2xl"
+        style={{
+          background: "var(--bg-surface)",
+          border: "1px solid var(--line)",
+        }}
+      >
+        <div
+          className="text-[11px] uppercase tracking-[0.18em] font-bold"
+          style={{ color: isBoss ? "var(--danger)" : "var(--accent)" }}
+        >
+          {isBoss ? "Boss Cleared" : "Cleared"}
+          {diff ? ` · ${diff.en}` : ""}
+        </div>
+        <div
+          className="mt-1 text-2xl font-semibold"
+          style={{ color: "var(--ink-1)" }}
+        >
+          완성했어요
+        </div>
+        <StarsRow count={stars} />
+        <div
+          className="mt-2 text-3xl font-bold tabular-nums"
+          style={{ color: "var(--ink-1)" }}
+        >
+          {formatTime(elapsed)}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-semibold">
+          {isNewRecord ? (
+            <Tag tone="accent">신기록</Tag>
+          ) : (
+            <Tag tone="soft">이전 최고 {formatTime(previousBestMs!)}</Tag>
+          )}
+          {isPerfect && <Tag tone="gold">Perfect</Tag>}
+          {isDaily && <Tag tone="gold">오늘의 도전</Tag>}
+          <Tag tone="soft">{moveCount}회 이동</Tag>
+          {hintsUsed > 0 && <Tag tone="soft">힌트 {hintsUsed}</Tag>}
+          {flowBest >= 4 && <Tag tone="accent">Flow ×{flowBest}</Tag>}
+        </div>
+        <div className="mt-5 flex gap-2">
+          <button
+            type="button"
+            onClick={onExit}
+            className="press-95 flex-1 rounded-full py-3 text-sm font-semibold"
+            style={{
+              background: "var(--bg-elevated)",
+              color: "var(--ink-2)",
+              border: "1px solid var(--line)",
+            }}
+          >
+            목록
+          </button>
+          <button
+            type="button"
+            onClick={onReplay}
+            className="press-95 flex-1 rounded-full py-3 text-sm font-semibold"
+            style={{
+              background: "var(--accent-soft)",
+              color: "var(--accent-soft-fg)",
+              border: "1px solid var(--accent)",
+            }}
+          >
+            다시
+          </button>
+          <button
+            type="button"
+            onClick={onNext}
+            className="press-95 flex-1 rounded-full py-3 text-sm font-semibold"
+            style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
+          >
+            {nextLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Tag({
+  tone,
+  children,
+}: {
+  tone: "accent" | "soft" | "gold";
+  children: React.ReactNode;
+}) {
+  const styles: React.CSSProperties =
+    tone === "accent"
+      ? {
+          background: "var(--accent)",
+          color: "var(--accent-fg)",
+        }
+      : tone === "gold"
+      ? {
+          background: "var(--gold-soft)",
+          color: "var(--gold)",
+          border: "1px solid var(--gold)",
+        }
+      : {
+          background: "var(--bg-elevated)",
+          color: "var(--ink-3)",
+          border: "1px solid var(--line)",
+        };
+  return (
+    <span
+      className="rounded-full px-2.5 py-0.5"
+      style={{ ...styles, fontWeight: 600 }}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -905,8 +1288,6 @@ function countJoinedEdges(pieces: Piece[], rows: number, cols: number): number {
   return n;
 }
 
-// BFS across joined adjacencies starting from `startId`.
-// Returns the ids of every piece in the same connected cluster.
 function findGroup(
   startId: number,
   pieces: Piece[],
@@ -948,10 +1329,6 @@ function findGroup(
   return visited;
 }
 
-// Rigidly translate every piece in `groupIds` by (rDeltaRow, rDeltaCol) cells.
-// Non-group pieces in cells the group now occupies are displaced to the cells
-// the group just vacated (paired by sorted index).
-// Returns null if the move would push any group piece out of bounds.
 function applyGroupMove(
   pieces: Piece[],
   groupIds: Set<number>,
@@ -976,7 +1353,6 @@ function applyGroupMove(
     newGroupMap.set(p.id, ncr * cols + ncc);
   }
   const newGroupCells = new Set<number>(newGroupMap.values());
-  // Should never collide internally under a rigid translation, but guard anyway.
   if (newGroupCells.size !== groupPieces.length) return null;
 
   const vacated: number[] = [];
@@ -1006,11 +1382,14 @@ function applyGroupMove(
 
 function StarsRow({ count }: { count: number }) {
   return (
-    <div className="mt-3 flex justify-center gap-1">
+    <div
+      className="mt-3 flex justify-center gap-1 text-2xl"
+      style={{ letterSpacing: "0.08em" }}
+    >
       {[1, 2, 3].map((n) => (
         <span
           key={n}
-          className={`text-3xl ${n <= count ? "text-amber-500" : "text-amber-200"}`}
+          style={{ color: n <= count ? "var(--gold)" : "var(--ink-faint)" }}
           aria-hidden
         >
           ★

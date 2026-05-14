@@ -10,22 +10,31 @@ import {
 } from "@/data/stages";
 import { emptyProgress, loadProgress, type Progress } from "@/lib/progress";
 import { peekSavedStageId } from "@/lib/savedGame";
-import { getStageImageDataUrl, getStagePalette } from "@/lib/stageImage";
+import { getStageImageDataUrl } from "@/lib/stageImage";
 import { getDailyStageId } from "@/lib/daily";
 import TutorialTip from "./TutorialTip";
 import SettingsSheet from "./SettingsSheet";
-import AchievementsRow from "./AchievementsRow";
 import DailyBanner from "./DailyBanner";
+import LevelChip from "./LevelChip";
+import PhotoGallery from "./PhotoGallery";
 
 type Props = {
-  onPlay: (stage: Stage) => void;
+  progressOverride?: Progress | null;
+  onSelect: (stage: Stage) => void;
+  // Quick-start bypasses the pre-stage screen (used by resume banner).
+  onQuickStart: (stage: Stage) => void;
 };
 
-export default function StageSelect({ onPlay }: Props) {
-  const [progress, setProgress] = useState<Progress | null>(null);
+export default function StageSelect({
+  progressOverride,
+  onSelect,
+  onQuickStart,
+}: Props) {
+  const [progress, setProgress] = useState<Progress | null>(progressOverride ?? null);
   const [resumeStageId, setResumeStageId] = useState<number | null>(null);
   const [dailyStageId, setDailyStageId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const toastTimerRef = useRef<number | null>(null);
@@ -41,41 +50,41 @@ export default function StageSelect({ onPlay }: Props) {
   };
 
   useEffect(() => {
-    // Hydrate stage-select state from localStorage on mount (client-only).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setProgress(loadProgress());
+    if (progressOverride !== undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setProgress(progressOverride);
+    } else {
+      setProgress(loadProgress());
+    }
     setResumeStageId(peekSavedStageId());
     setDailyStageId(getDailyStageId());
-  }, []);
+  }, [progressOverride]);
 
   const clearedCount = useMemo(() => {
     if (!progress) return 0;
     return Object.keys(progress.cleared).length;
   }, [progress]);
 
-  // The first stage that's unlocked but still uncleared — the natural "next".
+  const totalStarsEarned = useMemo(() => {
+    if (!progress) return 0;
+    return Object.values(progress.bestStars).reduce((a, b) => a + b, 0);
+  }, [progress]);
+
   const nextStageId = useMemo<number | null>(() => {
     if (!progress) return null;
     const limit = Math.min(TOTAL_STAGE_COUNT, progress.unlockedUpTo);
-    let found: number | null = null;
     for (let id = 1; id <= limit; id++) {
-      if (!progress.cleared[id]) {
-        found = id;
-        break;
-      }
+      if (!progress.cleared[id]) return id;
     }
-    return found;
+    return null;
   }, [progress]);
 
-  // Show floating "to top" button once the player has scrolled past the
-  // initial viewport-worth of chapters.
   useEffect(() => {
     const onScroll = () => setShowScrollTop(window.scrollY > 640);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Once we know progress, scroll to the chapter holding the latest unlocked stage.
   useEffect(() => {
     if (!progress) return;
     const target = resumeStageId ?? nextStageId ?? progress.unlockedUpTo;
@@ -90,36 +99,77 @@ export default function StageSelect({ onPlay }: Props) {
   };
 
   return (
-    <main className="flex min-h-[100dvh] flex-col px-4 pt-5 pb-8">
+    <main
+      className="flex min-h-[100dvh] flex-col px-4 pt-4 pb-8"
+      style={{ background: "var(--bg-app)" }}
+    >
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-amber-900">직소퍼즐</h1>
-          <p className="mt-0.5 text-xs text-amber-800/80">
-            {clearedCount} 스테이지 클리어 · 1만+ 스테이지 ∞
+          <div
+            className="text-[11px] tracking-[0.18em] uppercase font-bold"
+            style={{ color: "var(--ink-mute)" }}
+          >
+            Jigsaw · 직소퍼즐
+          </div>
+          <h1
+            className="mt-0.5 text-[26px] font-semibold leading-tight"
+            style={{ color: "var(--ink-1)", letterSpacing: "-0.01em" }}
+          >
+            오늘의 한 판
+          </h1>
+          <p
+            className="mt-0.5 text-xs"
+            style={{ color: "var(--ink-mute)" }}
+          >
+            {clearedCount} 클리어 · ★ {totalStarsEarned}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          aria-label="설정"
-          className="rounded-full bg-white shadow-sm border border-amber-200 w-10 h-10 flex items-center justify-center text-amber-900"
-        >
-          <span className="text-lg" aria-hidden>
-            ⚙
-          </span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setGalleryOpen(true)}
+            aria-label="갤러리"
+            className="press-95 w-10 h-10 rounded-full flex items-center justify-center"
+            style={{
+              background: "var(--bg-surface)",
+              color: "var(--ink-2)",
+              border: "1px solid var(--line)",
+            }}
+          >
+            <span aria-hidden style={{ fontSize: 16 }}>
+              ◧
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="설정"
+            className="press-95 w-10 h-10 rounded-full flex items-center justify-center"
+            style={{
+              background: "var(--bg-surface)",
+              color: "var(--ink-2)",
+              border: "1px solid var(--line)",
+            }}
+          >
+            <span aria-hidden style={{ fontSize: 16 }}>
+              ⚙
+            </span>
+          </button>
+        </div>
       </header>
 
-      <DailyBanner onPlay={onPlay} />
+      <div className="mt-3">
+        <LevelChip progress={progress} />
+      </div>
 
-      <AchievementsRow progress={progress} />
+      <DailyBanner onSelect={onSelect} />
 
       {resumeStageId != null && (
         <ResumeBanner
           stageId={resumeStageId}
           onResume={() => {
             const stage = STAGES.find((s) => s.id === resumeStageId);
-            if (stage) onPlay(stage);
+            if (stage) onQuickStart(stage);
           }}
         />
       )}
@@ -140,6 +190,9 @@ export default function StageSelect({ onPlay }: Props) {
             : 0;
           const chapterFullyCleared =
             clearedInChapter === stagesInChapter.length;
+          const chapterMastered =
+            chapterFullyCleared &&
+            starsInChapter === stagesInChapter.length * 3;
           return (
             <section
               key={ch.id}
@@ -149,23 +202,61 @@ export default function StageSelect({ onPlay }: Props) {
               className="scroll-mt-3 chapter-section"
             >
               <header className="flex items-end justify-between mb-2 px-0.5">
-                <div>
-                  <div className="text-[11px] font-bold tracking-wide text-amber-700/80 uppercase">
+                <div className="min-w-0">
+                  <div
+                    className="text-[10px] font-bold tracking-[0.18em] uppercase flex items-center gap-1.5"
+                    style={{ color: "var(--ink-mute)" }}
+                  >
                     Chapter {ch.id}
-                    {chapterFullyCleared && " ✓"}
+                    {chapterMastered && (
+                      <span
+                        className="rounded-sm px-1 py-0.5 text-[9px]"
+                        style={{
+                          background: "var(--gold-soft)",
+                          color: "var(--gold)",
+                          letterSpacing: "0.14em",
+                        }}
+                      >
+                        MASTER
+                      </span>
+                    )}
+                    {!chapterMastered && chapterFullyCleared && (
+                      <span
+                        className="rounded-sm px-1 py-0.5 text-[9px]"
+                        style={{
+                          background: "var(--success-soft)",
+                          color: "var(--success)",
+                          letterSpacing: "0.14em",
+                        }}
+                      >
+                        CLEAR
+                      </span>
+                    )}
                   </div>
-                  <div className="text-lg font-bold text-amber-900 leading-tight">
+                  <div
+                    className="text-lg font-semibold leading-tight"
+                    style={{ color: "var(--ink-1)" }}
+                  >
                     {ch.title}
                   </div>
-                  <div className="text-[11px] text-amber-800/70">
+                  <div
+                    className="text-[11px]"
+                    style={{ color: "var(--ink-mute)" }}
+                  >
                     {ch.subtitle}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[11px] font-semibold tabular-nums text-amber-700/80">
+                  <div
+                    className="text-[11px] font-semibold tabular-nums"
+                    style={{ color: "var(--ink-2)" }}
+                  >
                     {clearedInChapter} / {stagesInChapter.length}
                   </div>
-                  <div className="text-[11px] font-semibold tabular-nums text-amber-700/60">
+                  <div
+                    className="text-[11px] font-semibold tabular-nums"
+                    style={{ color: "var(--ink-mute)" }}
+                  >
                     ★ {starsInChapter} / {stagesInChapter.length * 3}
                   </div>
                 </div>
@@ -179,10 +270,12 @@ export default function StageSelect({ onPlay }: Props) {
                     isResume={resumeStageId === s.id}
                     isNext={nextStageId === s.id}
                     isDaily={dailyStageId === s.id}
-                    onPlay={onPlay}
+                    onSelect={onSelect}
                     onLockedTap={(stageId) => {
                       const unlockedUpTo = progress?.unlockedUpTo ?? 1;
-                      showToast(`스테이지 ${unlockedUpTo}을(를) 먼저 클리어해 주세요`);
+                      showToast(
+                        `스테이지 ${unlockedUpTo}을(를) 먼저 클리어해 주세요`
+                      );
                       void stageId;
                     }}
                   />
@@ -193,8 +286,11 @@ export default function StageSelect({ onPlay }: Props) {
         })}
       </div>
 
-      <p className="mt-8 text-center text-[11px] text-amber-700/70">
-        스테이지를 차례로 클리어하면 다음 스테이지가 열려요. 10단위는 보스 ✨
+      <p
+        className="mt-8 text-center text-[10px] tracking-[0.16em] uppercase font-semibold"
+        style={{ color: "var(--ink-mute)" }}
+      >
+        Endless · 끝없는 길
       </p>
 
       <TutorialTip />
@@ -203,10 +299,17 @@ export default function StageSelect({ onPlay }: Props) {
         onClose={() => setSettingsOpen(false)}
         onResetProgress={handleResetProgress}
       />
+      <PhotoGallery
+        open={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+      />
 
       {toast && (
         <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4 pointer-events-none">
-          <div className="rounded-full bg-amber-900/90 text-white text-sm px-4 py-2 shadow-lg">
+          <div
+            className="rounded-full text-sm px-4 py-2 shadow-lg"
+            style={{ background: "var(--ink-2)", color: "var(--bg-surface)" }}
+          >
             {toast}
           </div>
         </div>
@@ -217,8 +320,12 @@ export default function StageSelect({ onPlay }: Props) {
           type="button"
           aria-label="맨 위로"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-4 right-4 z-30 w-11 h-11 rounded-full bg-amber-700 text-white text-lg shadow-lg active:scale-95 transition-transform"
-          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          className="press-95 fixed bottom-4 right-4 z-30 w-11 h-11 rounded-full shadow-lg"
+          style={{
+            background: "var(--accent)",
+            color: "var(--accent-fg)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
         >
           ↑
         </button>
@@ -238,13 +345,23 @@ function ResumeBanner({
     <button
       type="button"
       onClick={onResume}
-      className="mt-4 flex items-center justify-between rounded-2xl bg-amber-700 text-white px-4 py-3 shadow-sm active:scale-[0.99] transition-transform"
+      className="press-95 mt-3 flex items-center justify-between rounded-2xl px-4 py-3 w-full"
+      style={{
+        background: "var(--accent)",
+        color: "var(--accent-fg)",
+      }}
     >
       <div className="text-left">
-        <div className="text-xs opacity-80">진행 중</div>
-        <div className="text-base font-bold">스테이지 {stageId} 이어하기</div>
+        <div
+          className="text-[10px] tracking-[0.18em] uppercase font-bold opacity-80"
+        >
+          Resume
+        </div>
+        <div className="text-base font-semibold">
+          스테이지 {stageId} 이어하기
+        </div>
       </div>
-      <div className="text-2xl" aria-hidden>
+      <div className="text-xl" aria-hidden>
         ▶
       </div>
     </button>
@@ -257,7 +374,7 @@ function StageCard({
   isResume,
   isNext,
   isDaily,
-  onPlay,
+  onSelect,
   onLockedTap,
 }: {
   stage: Stage;
@@ -265,41 +382,39 @@ function StageCard({
   isResume: boolean;
   isNext: boolean;
   isDaily: boolean;
-  onPlay: (s: Stage) => void;
+  onSelect: (s: Stage) => void;
   onLockedTap: (stageId: number) => void;
 }) {
   const unlocked = progress ? stage.id <= progress.unlockedUpTo : stage.id === 1;
   const cleared = progress ? !!progress.cleared[stage.id] : false;
   const best = progress?.bestTimes[stage.id];
   const stars = progress?.bestStars[stage.id] ?? 0;
+  const mastered = cleared && stars === 3;
   const [imgLoaded, setImgLoaded] = useState(false);
 
   const img = getStageImageDataUrl(stage.id);
-  const palette = getStagePalette(stage.id);
 
   return (
     <button
       type="button"
-      onClick={() => (unlocked ? onPlay(stage) : onLockedTap(stage.id))}
-      className={`relative aspect-square rounded-xl overflow-hidden text-left shadow-sm border ${
-        stage.isBoss
-          ? "border-rose-500"
+      onClick={() => (unlocked ? onSelect(stage) : onLockedTap(stage.id))}
+      className="press-95 relative aspect-square rounded-xl overflow-hidden text-left"
+      style={{
+        background: "var(--bg-elevated)",
+        border: mastered
+          ? "1.5px solid var(--gold)"
+          : stage.isBoss
+          ? "1.5px solid var(--danger)"
           : cleared
-          ? "border-emerald-500"
-          : "border-amber-200"
-      } ${unlocked ? "active:scale-[0.97] transition-transform" : "opacity-60"} ${
-        isNext && !isResume
-          ? "ring-2 ring-amber-500 ring-offset-2 ring-offset-amber-50"
-          : ""
-      }`}
+          ? "1.5px solid var(--success)"
+          : "1px solid var(--line)",
+        opacity: unlocked ? 1 : 0.55,
+        boxShadow: isNext && !isResume
+          ? "0 0 0 2px var(--accent), 0 0 0 4px var(--bg-app)"
+          : "none",
+      }}
     >
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `linear-gradient(135deg, ${palette[1]} 0%, ${palette[2]} 100%)`,
-        }}
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element -- cross-origin picsum URLs aren't friendly to next/image without remote patterns */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={img}
         alt=""
@@ -309,53 +424,78 @@ function StageCard({
         className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
         style={{
           opacity: imgLoaded ? 1 : 0,
-          filter: unlocked ? "none" : "grayscale(80%) brightness(0.75)",
+          filter: unlocked ? "none" : "grayscale(85%) brightness(0.7)",
         }}
       />
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-1.5 pb-1.5 pt-3">
-        <div className="flex items-end justify-between">
-          <span className="text-white text-xs font-bold tabular-nums">
-            {stage.isBoss && "👑 "}
-            {stage.id}
+      <div
+        className="absolute inset-x-0 bottom-0 px-1.5 pb-1 pt-3"
+        style={{
+          background:
+            "linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%)",
+        }}
+      >
+        <div className="flex items-end justify-between text-white">
+          <span className="text-xs font-bold tabular-nums">
+            {String(stage.id).padStart(3, "0")}
           </span>
           {cleared && best != null && (
-            <span className="text-white text-[10px] font-medium tabular-nums">
+            <span className="text-[10px] font-medium tabular-nums opacity-90">
               {formatTime(best)}
             </span>
           )}
         </div>
         {cleared && (
-          <div className="mt-0.5 flex gap-[1px] text-[10px] leading-none">
-            {[1, 2, 3].map((n) => (
-              <span
-                key={n}
-                className={n <= stars ? "text-amber-300" : "text-white/30"}
-                aria-hidden
-              >
-                ★
-              </span>
-            ))}
+          <div
+            className="mt-0.5 text-[10px] leading-none"
+            style={{ letterSpacing: "0.06em" }}
+          >
+            <span style={{ color: "#f6c870" }}>{"★".repeat(stars)}</span>
+            <span style={{ color: "rgba(255,255,255,0.35)" }}>
+              {"★".repeat(3 - stars)}
+            </span>
           </div>
         )}
       </div>
       {!unlocked && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-          <span className="text-white text-2xl drop-shadow">🔒</span>
+        <div
+          className="absolute inset-0 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.25)" }}
+        >
+          <span style={{ color: "#fff", fontSize: 22 }} aria-hidden>
+            ⨯
+          </span>
         </div>
       )}
       {stage.isBoss && unlocked && !cleared && (
-        <div className="absolute top-1 right-1 rounded-full bg-rose-600 text-white text-[10px] px-1.5 py-0.5 font-bold shadow">
+        <div
+          className="absolute top-1 right-1 rounded-sm px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em]"
+          style={{ background: "var(--danger)", color: "#fff" }}
+        >
           BOSS
         </div>
       )}
+      {mastered && (
+        <div
+          className="absolute top-1 right-1 rounded-sm px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em]"
+          style={{ background: "var(--gold)", color: "#fff" }}
+        >
+          MASTER
+        </div>
+      )}
       {isResume && (
-        <div className="absolute top-1 left-1 rounded-full bg-amber-700 text-white text-[10px] px-1.5 py-0.5 font-bold shadow">
-          이어하기
+        <div
+          className="absolute top-1 left-1 rounded-sm px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em]"
+          style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
+        >
+          RESUME
         </div>
       )}
       {isDaily && !isResume && (
-        <div className="absolute top-1 left-1 rounded-full bg-amber-500 text-white text-[10px] px-1.5 py-0.5 font-bold shadow">
-          오늘
+        <div
+          className="absolute top-1 left-1 rounded-sm px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em]"
+          style={{ background: "var(--gold)", color: "#fff" }}
+        >
+          TODAY
         </div>
       )}
     </button>

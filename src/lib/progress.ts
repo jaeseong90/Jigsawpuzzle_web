@@ -1,18 +1,40 @@
+import type { Difficulty } from "@/lib/difficulty";
+
 const PROGRESS_KEY = "jigsaw:progress:v2";
+
+export type DifficultyRecord = {
+  bestTimeMs: number;
+  bestStars: number;
+};
 
 export type Progress = {
   // Highest stage that should appear unlocked. Defaults to 1.
   unlockedUpTo: number;
-  // Best completion time in ms, keyed by stage id.
+  // Best completion time in ms, keyed by stage id (standard difficulty).
   bestTimes: Record<number, number>;
-  // Best star rating earned per stage (1-3).
+  // Best star rating earned per stage 1-3 (standard difficulty).
   bestStars: Record<number, number>;
-  // Stages that have been cleared at least once.
+  // Stages that have been cleared at least once (any difficulty).
   cleared: Record<number, true>;
+  // Lifetime XP. Drives the level chip on the home screen.
+  xp: number;
+  // Per-difficulty records — separate from `bestTimes`/`bestStars` so
+  // standard-mode mastery stays comparable across the player base.
+  bestByDifficulty: {
+    relax: Record<number, DifficultyRecord>;
+    master: Record<number, DifficultyRecord>;
+  };
 };
 
 export function emptyProgress(): Progress {
-  return { unlockedUpTo: 1, bestTimes: {}, bestStars: {}, cleared: {} };
+  return {
+    unlockedUpTo: 1,
+    bestTimes: {},
+    bestStars: {},
+    cleared: {},
+    xp: 0,
+    bestByDifficulty: { relax: {}, master: {} },
+  };
 }
 
 export function loadProgress(): Progress {
@@ -22,11 +44,17 @@ export function loadProgress(): Progress {
     if (!raw) return emptyProgress();
     const parsed = JSON.parse(raw) as Partial<Progress> | null;
     if (!parsed || typeof parsed !== "object") return emptyProgress();
+    const empty = emptyProgress();
     return {
       unlockedUpTo: typeof parsed.unlockedUpTo === "number" ? parsed.unlockedUpTo : 1,
       bestTimes: parsed.bestTimes ?? {},
       bestStars: parsed.bestStars ?? {},
       cleared: parsed.cleared ?? {},
+      xp: typeof parsed.xp === "number" ? parsed.xp : 0,
+      bestByDifficulty: {
+        relax: parsed.bestByDifficulty?.relax ?? empty.bestByDifficulty.relax,
+        master: parsed.bestByDifficulty?.master ?? empty.bestByDifficulty.master,
+      },
     };
   } catch {
     return emptyProgress();
@@ -48,25 +76,50 @@ export function recordClear(
   durationMs: number,
   stars: number,
   totalStages: number,
-  options?: { advanceUnlock?: boolean }
+  options?: {
+    advanceUnlock?: boolean;
+    difficulty?: Difficulty;
+    xpEarned?: number;
+  }
 ): Progress {
+  const advanceUnlock = options?.advanceUnlock ?? true;
+  const difficulty: Difficulty = options?.difficulty ?? "standard";
+  const xpEarned = options?.xpEarned ?? 0;
+
   // Daily/replay clears of out-of-band stages should not jump the unlock
   // frontier past intervening stages — pass advanceUnlock=false in that case.
-  const advanceUnlock = options?.advanceUnlock ?? true;
   const nextUnlock = advanceUnlock
     ? Math.max(prev.unlockedUpTo, Math.min(stageId + 1, totalStages))
     : prev.unlockedUpTo;
+
   const next: Progress = {
+    ...prev,
     unlockedUpTo: nextUnlock,
     bestTimes: { ...prev.bestTimes },
     bestStars: { ...prev.bestStars },
     cleared: { ...prev.cleared, [stageId]: true },
+    xp: prev.xp + xpEarned,
+    bestByDifficulty: {
+      relax: { ...prev.bestByDifficulty.relax },
+      master: { ...prev.bestByDifficulty.master },
+    },
   };
-  const bestTime = prev.bestTimes[stageId];
-  next.bestTimes[stageId] =
-    bestTime == null || durationMs < bestTime ? durationMs : bestTime;
-  const bestStar = prev.bestStars[stageId] ?? 0;
-  next.bestStars[stageId] = Math.max(bestStar, stars);
+
+  if (difficulty === "standard") {
+    const bestTime = prev.bestTimes[stageId];
+    next.bestTimes[stageId] =
+      bestTime == null || durationMs < bestTime ? durationMs : bestTime;
+    const bestStar = prev.bestStars[stageId] ?? 0;
+    next.bestStars[stageId] = Math.max(bestStar, stars);
+  } else {
+    const bucket = next.bestByDifficulty[difficulty];
+    const existing = bucket[stageId];
+    bucket[stageId] = {
+      bestTimeMs: existing == null || durationMs < existing.bestTimeMs ? durationMs : existing.bestTimeMs,
+      bestStars: Math.max(existing?.bestStars ?? 0, stars),
+    };
+  }
+
   saveProgress(next);
   return next;
 }

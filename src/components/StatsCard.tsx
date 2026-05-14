@@ -4,6 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { loadProgress, type Progress } from "@/lib/progress";
 import { loadDaily, type DailyRecord } from "@/lib/daily";
 import { STAGES } from "@/data/stages";
+import {
+  deriveLevel,
+  inferTotalXpFromProgress,
+  titleForLevel,
+} from "@/lib/level";
 
 export default function StatsCard() {
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -44,6 +49,12 @@ export default function StatsCard() {
     }
     const averageTime = timeSamples > 0 ? Math.round(totalTime / timeSamples) : 0;
 
+    const xp =
+      progress.xp > 0
+        ? progress.xp
+        : inferTotalXpFromProgress(progress);
+    const lvl = deriveLevel(xp);
+
     return {
       cleared,
       totalStars,
@@ -52,26 +63,44 @@ export default function StatsCard() {
       fastestStageId,
       averageTime,
       timeSamples,
+      level: lvl.level,
+      title: titleForLevel(lvl.level),
+      xp,
     };
   }, [progress]);
 
   if (!summary) {
     return (
-      <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
+      <div
+        className="rounded-xl px-4 py-3 text-sm"
+        style={{
+          background: "var(--bg-elevated)",
+          color: "var(--ink-mute)",
+          border: "1px solid var(--line)",
+        }}
+      >
         통계를 불러오는 중…
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 space-y-2 text-sm">
+    <div
+      className="rounded-xl px-4 py-3 space-y-2 text-sm"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--line)",
+      }}
+    >
+      <Row label="레벨" value={`Lv.${summary.level} · ${summary.title}`} />
+      <Row label="누적 XP" value={`${summary.xp.toLocaleString()}`} />
       <Row label="클리어한 스테이지" value={`${summary.cleared}`} />
       <Row label="획득한 별" value={`★ ${summary.totalStars}`} />
       <Row label="보스 격파" value={`${summary.bossesCleared}`} />
       {summary.fastestTime != null && summary.fastestStageId != null && (
         <Row
           label="최단 클리어"
-          value={`${formatTime(summary.fastestTime)} (스테이지 ${summary.fastestStageId})`}
+          value={`${formatTime(summary.fastestTime)} · St.${summary.fastestStageId}`}
         />
       )}
       {summary.timeSamples > 0 && (
@@ -79,8 +108,8 @@ export default function StatsCard() {
       )}
       {daily && (
         <>
-          <Row label="일일 챌린지 연속" value={`${daily.streak}일`} />
-          <Row label="일일 챌린지 누적" value={`${daily.totalCleared}회`} />
+          <Row label="데일리 연속" value={`${daily.streak}일`} />
+          <Row label="데일리 누적" value={`${daily.totalCleared}회`} />
         </>
       )}
     </div>
@@ -90,8 +119,13 @@ export default function StatsCard() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="text-amber-800/80">{label}</span>
-      <span className="font-semibold text-amber-900 tabular-nums">{value}</span>
+      <span style={{ color: "var(--ink-mute)" }}>{label}</span>
+      <span
+        className="font-semibold tabular-nums"
+        style={{ color: "var(--ink-1)" }}
+      >
+        {value}
+      </span>
     </div>
   );
 }

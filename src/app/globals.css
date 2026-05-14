@@ -1,23 +1,103 @@
 @import "tailwindcss";
 
+/* ------------------------------------------------------------------
+   Adult-casual palette. Two themes share the same variable names so a
+   single [data-theme] attribute on <html> swaps the look. Light is a
+   warm porcelain/clay scheme; dark is a deep ink with brass accents.
+   ------------------------------------------------------------------ */
+
 :root {
-  --background: #fdf6ee;
-  --foreground: #1f1408;
-  --accent: #b45309;
+  --bg-app: #f6f1ea;
+  --bg-surface: #ffffff;
+  --bg-elevated: #fbf6ee;
+  --bg-board: #efe6d8;
+  --bg-piece: #f3ead9;
+  --bg-overlay: rgba(33, 27, 22, 0.55);
+
+  --ink-1: #1a140d;
+  --ink-2: #3a2f24;
+  --ink-3: #5a4938;
+  --ink-mute: #8a7868;
+  --ink-faint: #b8a896;
+
+  --line-soft: rgba(0, 0, 0, 0.06);
+  --line: rgba(0, 0, 0, 0.10);
+
+  --accent: #8a5a2b;
+  --accent-fg: #ffffff;
+  --accent-soft: #efe2cf;
+  --accent-soft-fg: #6b4520;
+
+  --danger: #b3351f;
+  --danger-soft: #f7e1dc;
+
+  --success: #4a6b3a;
+  --success-soft: #e3ebd9;
+
+  --gold: #b08948;
+  --gold-soft: #efe2c2;
+
+  --ring: rgba(138, 90, 43, 0.45);
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg-app: #16120e;
+  --bg-surface: #221c16;
+  --bg-elevated: #2a2219;
+  --bg-board: #1d1812;
+  --bg-piece: #2c241a;
+  --bg-overlay: rgba(0, 0, 0, 0.65);
+
+  --ink-1: #f3ece0;
+  --ink-2: #d8cdbc;
+  --ink-3: #b5a791;
+  --ink-mute: #8a7d68;
+  --ink-faint: #5a5040;
+
+  --line-soft: rgba(255, 255, 255, 0.07);
+  --line: rgba(255, 255, 255, 0.12);
+
+  --accent: #d4a05c;
+  --accent-fg: #1a140d;
+  --accent-soft: #3a2c1d;
+  --accent-soft-fg: #e8c98c;
+
+  --danger: #d77565;
+  --danger-soft: #3a201c;
+
+  --success: #93b777;
+  --success-soft: #25301e;
+
+  --gold: #d4b07a;
+  --gold-soft: #38291a;
+
+  --ring: rgba(212, 160, 92, 0.55);
+
+  color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg-app: var(--bg-app);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-ink-1: var(--ink-1);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-mute: var(--ink-mute);
   --color-accent: var(--accent);
 }
 
 html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
-    "Malgun Gothic", "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg-app);
+  color: var(--ink-1);
+  font-family:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic", "Helvetica Neue", Arial,
+    sans-serif;
+  font-feature-settings: "ss01", "cv11", "tnum";
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
@@ -31,6 +111,8 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* --- puzzle pieces ------------------------------------------------- */
+
 .puzzle-piece {
   touch-action: none;
 }
@@ -42,7 +124,7 @@ body {
   }
   35% {
     transform: scale(1.04);
-    filter: brightness(1.15) saturate(1.2);
+    filter: brightness(1.15) saturate(1.15);
   }
   100% {
     transform: scale(1);
@@ -53,6 +135,8 @@ body {
 .puzzle-solved-pulse {
   animation: puzzle-solved-pulse 700ms ease-out;
 }
+
+/* --- confetti ------------------------------------------------------ */
 
 @keyframes confetti-fall {
   0% {
@@ -73,11 +157,14 @@ body {
   animation-fill-mode: forwards;
 }
 
-/* Skip painting off-screen chapter sections so the 999-stage grid stays cheap. */
+/* --- list virtualization hint -------------------------------------- */
+
 .chapter-section {
   content-visibility: auto;
   contain-intrinsic-size: 100% 480px;
 }
+
+/* --- modal entry --------------------------------------------------- */
 
 @keyframes solve-sheet-up {
   0% {
@@ -92,4 +179,81 @@ body {
 
 .solve-sheet-enter > * {
   animation: solve-sheet-up 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes fade-in-soft {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in-soft {
+  animation: fade-in-soft 220ms ease-out both;
+}
+
+/* --- flow ring (in-game) ------------------------------------------- */
+
+@keyframes flow-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.flow-ring {
+  position: relative;
+  isolation: isolate;
+}
+
+.flow-ring::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from 0deg,
+    var(--accent) 0%,
+    transparent 35%,
+    var(--accent) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: flow-ring-spin 2.4s linear infinite;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* --- progress bar -------------------------------------------------- */
+
+.xp-bar-fill {
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    var(--gold) 100%
+  );
+  transition: width 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* --- subtle press utility ----------------------------------------- */
+
+.press-95 {
+  transition: transform 120ms ease-out;
+}
+.press-95:active {
+  transform: scale(0.96);
+}
+
+/* --- gallery card ------------------------------------------------- */
+
+.gallery-card {
+  break-inside: avoid;
 }
