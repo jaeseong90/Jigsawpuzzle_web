@@ -733,8 +733,8 @@ function Board({
       {solved && <Confetti count={isBoss ? 60 : 36} />}
 
       {showSolveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-amber-900/55 backdrop-blur-sm p-6">
-          <div className="rounded-2xl bg-white px-7 py-6 text-center shadow-xl w-full max-w-xs">
+        <div className="fixed inset-x-0 bottom-0 z-50 flex items-end justify-center p-3 pointer-events-none solve-sheet-enter">
+          <div className="rounded-2xl bg-white px-6 py-5 text-center shadow-2xl w-full max-w-sm pointer-events-auto">
             <div className="text-3xl font-bold text-amber-900">
               {isBoss ? "보스 격파! 👑" : "완성! 🎉"}
             </div>
