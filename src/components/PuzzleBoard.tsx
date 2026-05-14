@@ -26,8 +26,12 @@ type Props = {
   cols: number;
   isBoss?: boolean;
   stageLabel?: string;
-  onSolved?: (durationMs: number) => void;
+  // Time in ms below which the player earns 3 stars (par). 1.8× par → 2 stars; else 1.
+  parTimeMs?: number;
+  onSolved?: (durationMs: number, stars: number, hintsUsed: number) => void;
   onExit?: () => void;
+  onNext?: () => void;
+  hasNext?: boolean;
 };
 
 export default function PuzzleBoard(props: Props) {
@@ -92,8 +96,11 @@ export default function PuzzleBoard(props: Props) {
             cols={cols}
             boardSize={boardSize}
             isBoss={props.isBoss}
+            parTimeMs={props.parTimeMs}
             onSolved={props.onSolved}
             onExit={props.onExit}
+            onNext={props.onNext}
+            hasNext={props.hasNext}
           />
         ) : (
           <div className="text-amber-700">준비 중...</div>
@@ -141,9 +148,19 @@ type BoardProps = {
   cols: number;
   boardSize: { w: number; h: number };
   isBoss?: boolean;
-  onSolved?: (durationMs: number) => void;
+  parTimeMs?: number;
+  onSolved?: (durationMs: number, stars: number, hintsUsed: number) => void;
   onExit?: () => void;
+  onNext?: () => void;
+  hasNext?: boolean;
 };
+
+function computeStars(durationMs: number, parMs: number | undefined): 1 | 2 | 3 {
+  if (!parMs || parMs <= 0) return 1;
+  if (durationMs <= parMs) return 3;
+  if (durationMs <= parMs * 1.8) return 2;
+  return 1;
+}
 
 function buildShuffledPieces(rows: number, cols: number): Piece[] {
   const total = rows * cols;
@@ -181,8 +198,11 @@ function Board({
   cols,
   boardSize,
   isBoss,
+  parTimeMs,
   onSolved,
   onExit,
+  onNext,
+  hasNext,
 }: BoardProps) {
   const boardRef = useRef<HTMLDivElement | null>(null);
 
@@ -322,9 +342,10 @@ function Board({
 
         const isSolved = next.every((p) => p.currentIndex === p.origRow * cols + p.origCol);
         if (isSolved && !solved) {
-          const duration = Date.now() - startedAt;
+          const duration = Math.max(0, Date.now() - startedAt - pausedTotal);
+          const stars = computeStars(duration, parTimeMs);
           setSolved(true);
-          onSolved?.(duration);
+          onSolved?.(duration, stars, hintsUsed);
           if (typeof navigator !== "undefined" && navigator.vibrate) {
             navigator.vibrate([20, 40, 80]);
           }
@@ -339,7 +360,7 @@ function Board({
         return next;
       });
     },
-    [dragId, hoverIndex, boardSize.w, boardSize.h, pieceW, pieceH, cols, rows, solved, startedAt, onSolved]
+    [dragId, hoverIndex, boardSize.w, boardSize.h, pieceW, pieceH, cols, rows, solved, startedAt, pausedTotal, parTimeMs, hintsUsed, onSolved]
   );
 
   const totalPieces = rows * cols;
@@ -399,7 +420,7 @@ function Board({
         ref={boardRef}
         className={`relative rounded-lg overflow-hidden ${
           isBoss ? "ring-4 ring-rose-500/60" : "ring-2 ring-amber-700/30"
-        } bg-amber-100/70 shadow-inner`}
+        } bg-amber-100/70 shadow-inner ${solved ? "puzzle-solved-pulse" : ""}`}
         style={{ width: boardSize.w, height: boardSize.h, touchAction: "none" }}
       >
         {showPreview && (
@@ -507,19 +528,29 @@ function Board({
             <div className="text-3xl font-bold text-amber-900">
               {isBoss ? "보스 격파! 👑" : "완성! 🎉"}
             </div>
-            <div className="mt-3 text-amber-800 text-2xl font-semibold tabular-nums">
+            <StarsRow count={computeStars(elapsed, parTimeMs)} />
+            <div className="mt-2 text-amber-800 text-2xl font-semibold tabular-nums">
               {formatTime(elapsed)}
             </div>
             <div className="mt-1 text-xs text-amber-700/70">
               {hintsUsed === 0 ? "힌트 없이 클리어 ⭐" : `힌트 ${hintsUsed}회 사용`}
             </div>
-            <button
-              type="button"
-              onClick={onExit}
-              className="mt-5 w-full rounded-full bg-amber-700 px-6 py-3 text-white font-semibold active:scale-[0.97] transition-transform"
-            >
-              계속
-            </button>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={onExit}
+                className="flex-1 rounded-full bg-white text-amber-900 border border-amber-200 px-4 py-3 font-semibold active:scale-[0.97] transition-transform"
+              >
+                목록
+              </button>
+              <button
+                type="button"
+                onClick={hasNext ? onNext : onExit}
+                className="flex-1 rounded-full bg-amber-700 px-4 py-3 text-white font-semibold active:scale-[0.97] transition-transform"
+              >
+                {hasNext ? "다음 ▶" : "완료"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -566,6 +597,22 @@ function countJoinedEdges(pieces: Piece[], rows: number, cols: number): number {
     if (v.bottom) n++;
   }
   return n;
+}
+
+function StarsRow({ count }: { count: number }) {
+  return (
+    <div className="mt-3 flex justify-center gap-1">
+      {[1, 2, 3].map((n) => (
+        <span
+          key={n}
+          className={`text-3xl ${n <= count ? "text-amber-500" : "text-amber-200"}`}
+          aria-hidden
+        >
+          ★
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function formatTime(ms: number): string {

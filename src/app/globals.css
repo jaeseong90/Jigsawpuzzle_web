@@ -34,3 +34,22 @@ body {
 .puzzle-piece {
   touch-action: none;
 }
+
+@keyframes puzzle-solved-pulse {
+  0% {
+    transform: scale(1);
+    filter: brightness(1) saturate(1);
+  }
+  35% {
+    transform: scale(1.04);
+    filter: brightness(1.15) saturate(1.2);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1) saturate(1);
+  }
+}
+
+.puzzle-solved-pulse {
+  animation: puzzle-solved-pulse 700ms ease-out;
+}

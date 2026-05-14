@@ -47,3 +47,20 @@ export function getStage(id: number): Stage | undefined {
 }
 
 export const TOTAL_STAGE_COUNT = TOTAL_STAGES;
+
+// Target time per piece in milliseconds. Beating this earns 3 stars.
+function msPerPiece(stage: Stage): number {
+  return stage.isBoss ? 7000 : 5000;
+}
+
+export function parTimeMs(stage: Stage): number {
+  return stage.rows * stage.cols * msPerPiece(stage);
+}
+
+export function starsFromTime(stage: Stage, durationMs: number): 1 | 2 | 3 {
+  const par = parTimeMs(stage);
+  if (durationMs <= par) return 3;
+  if (durationMs <= par * 1.8) return 2;
+  return 1;
+}
+

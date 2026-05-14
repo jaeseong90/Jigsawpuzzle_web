@@ -64,6 +64,7 @@ function StageCard({
   const unlocked = progress ? stage.id <= progress.unlockedUpTo : stage.id === 1;
   const cleared = progress ? !!progress.cleared[stage.id] : false;
   const best = progress?.bestTimes[stage.id];
+  const stars = progress?.bestStars[stage.id] ?? 0;
 
   const img = getStageImageDataUrl(stage.id);
 
@@ -89,22 +90,34 @@ function StageCard({
           filter: unlocked ? "none" : "grayscale(80%) brightness(0.75)",
         }}
       />
-      <div className="absolute inset-0 bg-black/0" />
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
-        <div className="flex items-center justify-between">
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-1.5 pb-1.5 pt-3">
+        <div className="flex items-end justify-between">
           <span className="text-white text-xs font-bold tabular-nums">
             {stage.isBoss && "👑 "}
             {stage.id}
           </span>
-          {cleared && (
-            <span className="text-white text-[10px] font-medium">
-              ★ {best != null ? formatTime(best) : ""}
+          {cleared && best != null && (
+            <span className="text-white text-[10px] font-medium tabular-nums">
+              {formatTime(best)}
             </span>
           )}
         </div>
+        {cleared && (
+          <div className="mt-0.5 flex gap-[1px] text-[10px] leading-none">
+            {[1, 2, 3].map((n) => (
+              <span
+                key={n}
+                className={n <= stars ? "text-amber-300" : "text-white/30"}
+                aria-hidden
+              >
+                ★
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       {!unlocked && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
           <span className="text-white text-2xl drop-shadow">🔒</span>
         </div>
       )}

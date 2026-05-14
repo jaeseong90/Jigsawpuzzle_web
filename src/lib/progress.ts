@@ -5,12 +5,14 @@ export type Progress = {
   unlockedUpTo: number;
   // Best completion time in ms, keyed by stage id.
   bestTimes: Record<number, number>;
+  // Best star rating earned per stage (1-3).
+  bestStars: Record<number, number>;
   // Stages that have been cleared at least once.
   cleared: Record<number, true>;
 };
 
 export function emptyProgress(): Progress {
-  return { unlockedUpTo: 1, bestTimes: {}, cleared: {} };
+  return { unlockedUpTo: 1, bestTimes: {}, bestStars: {}, cleared: {} };
 }
 
 export function loadProgress(): Progress {
@@ -23,6 +25,7 @@ export function loadProgress(): Progress {
     return {
       unlockedUpTo: typeof parsed.unlockedUpTo === "number" ? parsed.unlockedUpTo : 1,
       bestTimes: parsed.bestTimes ?? {},
+      bestStars: parsed.bestStars ?? {},
       cleared: parsed.cleared ?? {},
     };
   } catch {
@@ -43,19 +46,20 @@ export function recordClear(
   prev: Progress,
   stageId: number,
   durationMs: number,
+  stars: number,
   totalStages: number
 ): Progress {
   const next: Progress = {
     unlockedUpTo: Math.max(prev.unlockedUpTo, Math.min(stageId + 1, totalStages)),
     bestTimes: { ...prev.bestTimes },
+    bestStars: { ...prev.bestStars },
     cleared: { ...prev.cleared, [stageId]: true },
   };
-  const best = prev.bestTimes[stageId];
-  if (best == null || durationMs < best) {
-    next.bestTimes[stageId] = durationMs;
-  } else {
-    next.bestTimes[stageId] = best;
-  }
+  const bestTime = prev.bestTimes[stageId];
+  next.bestTimes[stageId] =
+    bestTime == null || durationMs < bestTime ? durationMs : bestTime;
+  const bestStar = prev.bestStars[stageId] ?? 0;
+  next.bestStars[stageId] = Math.max(bestStar, stars);
   saveProgress(next);
   return next;
 }
