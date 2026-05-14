@@ -9,19 +9,21 @@ export type Stage = {
 const TOTAL_STAGES = 100;
 
 function pickGrid(id: number, isBoss: boolean): { rows: number; cols: number } {
+  // Difficulty curve starts from 5×4 (20 pieces) — small grids skipped on
+  // purpose. Boss every 10 jumps an extra notch beyond the surrounding
+  // chapter so it feels like a real boss.
   if (isBoss) {
-    if (id <= 20) return { rows: 5, cols: 4 };
-    if (id <= 40) return { rows: 6, cols: 5 };
-    if (id <= 70) return { rows: 7, cols: 5 };
-    return { rows: 8, cols: 6 };
+    if (id <= 20) return { rows: 6, cols: 5 }; // 30
+    if (id <= 40) return { rows: 7, cols: 5 }; // 35
+    if (id <= 70) return { rows: 8, cols: 6 }; // 48
+    return { rows: 9, cols: 7 }; // 63 — final-stretch
   }
-  if (id <= 5) return { rows: 3, cols: 3 };
-  if (id <= 15) return { rows: 4, cols: 3 };
-  if (id <= 30) return { rows: 4, cols: 4 };
-  if (id <= 50) return { rows: 5, cols: 4 };
-  if (id <= 70) return { rows: 5, cols: 5 };
-  if (id <= 90) return { rows: 6, cols: 5 };
-  return { rows: 7, cols: 5 };
+  if (id <= 10) return { rows: 5, cols: 4 }; // 20
+  if (id <= 25) return { rows: 5, cols: 5 }; // 25
+  if (id <= 45) return { rows: 6, cols: 5 }; // 30
+  if (id <= 65) return { rows: 6, cols: 6 }; // 36
+  if (id <= 85) return { rows: 7, cols: 6 }; // 42
+  return { rows: 8, cols: 6 }; // 48
 }
 
 function buildStages(): Stage[] {
