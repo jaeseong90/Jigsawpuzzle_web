@@ -562,6 +562,26 @@ function Board({
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(12);
   }, [solved, hintsLeft, cols]);
 
+  const replay = useCallback(() => {
+    if (reshuffleTimerRef.current) {
+      window.clearTimeout(reshuffleTimerRef.current);
+      reshuffleTimerRef.current = null;
+    }
+    setReshuffleConfirming(false);
+    clearSavedGame();
+    setPieces(buildShuffledPieces(rows, cols));
+    setStartedAt(Date.now());
+    setNow(Date.now());
+    setPausedTotal(0);
+    setPausedAt(null);
+    setHintsLeft(initialHints);
+    setHintsUsed(0);
+    setHistory([]);
+    setUndosLeft(initialUndos);
+    setSolved(false);
+    setShowSolveModal(false);
+  }, [rows, cols, initialHints, initialUndos]);
+
   const undo = useCallback(() => {
     if (solved || undosLeft <= 0 || history.length === 0) return;
     const last = history[history.length - 1];
@@ -797,14 +817,21 @@ function Board({
               <button
                 type="button"
                 onClick={onExit}
-                className="flex-1 rounded-full bg-white text-amber-900 border border-amber-200 px-4 py-3 font-semibold active:scale-[0.97] transition-transform"
+                className="flex-1 rounded-full bg-white text-amber-900 border border-amber-200 px-3 py-3 text-sm font-semibold active:scale-[0.97] transition-transform"
               >
                 목록
               </button>
               <button
                 type="button"
+                onClick={replay}
+                className="flex-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 px-3 py-3 text-sm font-semibold active:scale-[0.97] transition-transform"
+              >
+                🔄 다시
+              </button>
+              <button
+                type="button"
                 onClick={hasNext ? onNext : onExit}
-                className="flex-1 rounded-full bg-amber-700 px-4 py-3 text-white font-semibold active:scale-[0.97] transition-transform"
+                className="flex-1 rounded-full bg-amber-700 px-3 py-3 text-sm text-white font-semibold active:scale-[0.97] transition-transform"
               >
                 {hasNext ? "다음 ▶" : "완료"}
               </button>
