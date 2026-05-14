@@ -67,3 +67,23 @@ export function recordClear(
 export function isUnlocked(progress: Progress, stageId: number): boolean {
   return stageId <= progress.unlockedUpTo;
 }
+
+const TUTORIAL_SEEN_KEY = "jigsaw:tutorial-seen";
+
+export function hasSeenTutorial(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return localStorage.getItem(TUTORIAL_SEEN_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+
+export function markTutorialSeen(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
+  } catch {
+    /* ignore quota */
+  }
+}

@@ -27,6 +27,8 @@ type Props = {
   cols: number;
   isBoss?: boolean;
   stageLabel?: string;
+  stageId?: number;
+  totalStages?: number;
   // Time in ms below which the player earns 3 stars (par). 1.8× par → 2 stars; else 1.
   parTimeMs?: number;
   onSolved?: (durationMs: number, stars: number, hintsUsed: number) => void;
@@ -83,6 +85,8 @@ export default function PuzzleBoard(props: Props) {
       <Header
         isBoss={props.isBoss}
         stageLabel={props.stageLabel}
+        stageId={props.stageId}
+        totalStages={props.totalStages}
         onExit={props.onExit}
       />
       <div
@@ -114,10 +118,14 @@ export default function PuzzleBoard(props: Props) {
 function Header({
   isBoss,
   stageLabel,
+  stageId,
+  totalStages,
   onExit,
 }: {
   isBoss?: boolean;
   stageLabel?: string;
+  stageId?: number;
+  totalStages?: number;
   onExit?: () => void;
 }) {
   return (
@@ -138,7 +146,9 @@ function Header({
       >
         {isBoss ? `👑 ${stageLabel ?? "보스"}` : stageLabel ?? "스테이지"}
       </div>
-      <div className="w-[64px]" />
+      <div className="text-[11px] font-medium text-amber-800/80 tabular-nums min-w-[64px] text-right">
+        {stageId != null && totalStages != null ? `${stageId} / ${totalStages}` : ""}
+      </div>
     </div>
   );
 }

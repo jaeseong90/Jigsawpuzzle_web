@@ -58,6 +58,8 @@ export default function Home() {
       cols={stage.cols}
       isBoss={stage.isBoss}
       stageLabel={stage.title}
+      stageId={stage.id}
+      totalStages={TOTAL_STAGE_COUNT}
       parTimeMs={par}
       hasNext={hasNext}
       onSolved={handleSolved}

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { STAGES, type Stage, TOTAL_STAGE_COUNT } from "@/data/stages";
 import { loadProgress, type Progress } from "@/lib/progress";
 import { getStageImageDataUrl } from "@/lib/stageImage";
+import TutorialTip from "./TutorialTip";
 
 type Props = {
   onPlay: (stage: Stage) => void;
@@ -48,6 +49,7 @@ export default function StageSelect({ onPlay }: Props) {
       <p className="mt-8 text-center text-[11px] text-amber-700/70">
         스테이지를 차례로 클리어하면 다음 스테이지가 열려요. 10단위는 보스 ✨
       </p>
+      <TutorialTip />
     </main>
   );
 }
