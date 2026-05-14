@@ -11,6 +11,7 @@ import {
 } from "@/data/stages";
 import { getStageImageDataUrl } from "@/lib/stageImage";
 import { loadProgress, recordClear, type Progress } from "@/lib/progress";
+import { loadDaily, recordDailyClear } from "@/lib/daily";
 
 export default function Home() {
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -40,6 +41,11 @@ export default function Home() {
     const prev = progress ?? loadProgress();
     const next = recordClear(prev, stage.id, durationMs, stars, TOTAL_STAGE_COUNT);
     setProgress(next);
+    // Also tick the daily-challenge record if this stage matches today's pick.
+    const daily = loadDaily();
+    if (daily.stageId === stage.id) {
+      recordDailyClear(daily, stage.id, durationMs, stars);
+    }
   };
 
   const handleExit = () => setStage(null);

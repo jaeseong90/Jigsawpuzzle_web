@@ -14,6 +14,7 @@ import { getStageImageDataUrl, getStagePalette } from "@/lib/stageImage";
 import TutorialTip from "./TutorialTip";
 import SettingsSheet from "./SettingsSheet";
 import AchievementsRow from "./AchievementsRow";
+import DailyBanner from "./DailyBanner";
 
 type Props = {
   onPlay: (stage: Stage) => void;
@@ -74,6 +75,8 @@ export default function StageSelect({ onPlay }: Props) {
           </button>
         </div>
       </header>
+
+      <DailyBanner onPlay={onPlay} />
 
       <AchievementsRow progress={progress} />
 
