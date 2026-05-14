@@ -43,9 +43,15 @@ export default function Home() {
 
   const handleSolved = (durationMs: number, stars: number) => {
     const prev = progress ?? loadProgress();
-    const next = recordClear(prev, stage.id, durationMs, stars, TOTAL_STAGE_COUNT);
+    // Only push the unlock frontier when the player cleared a stage that was
+    // already unlocked through normal progression — daily-challenge clears of
+    // far-future stages shouldn't skip the player past everything in between.
+    const advanceUnlock = stage.id <= prev.unlockedUpTo;
+    const next = recordClear(prev, stage.id, durationMs, stars, TOTAL_STAGE_COUNT, {
+      advanceUnlock,
+    });
     setProgress(next);
-    // Also tick the daily-challenge record if this stage matches today's pick.
+    // Tick the daily-challenge record if this stage matches today's pick.
     const daily = loadDaily();
     if (daily.stageId === stage.id) {
       recordDailyClear(daily, stage.id, durationMs, stars);

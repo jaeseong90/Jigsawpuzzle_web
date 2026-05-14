@@ -47,10 +47,17 @@ export function recordClear(
   stageId: number,
   durationMs: number,
   stars: number,
-  totalStages: number
+  totalStages: number,
+  options?: { advanceUnlock?: boolean }
 ): Progress {
+  // Daily/replay clears of out-of-band stages should not jump the unlock
+  // frontier past intervening stages — pass advanceUnlock=false in that case.
+  const advanceUnlock = options?.advanceUnlock ?? true;
+  const nextUnlock = advanceUnlock
+    ? Math.max(prev.unlockedUpTo, Math.min(stageId + 1, totalStages))
+    : prev.unlockedUpTo;
   const next: Progress = {
-    unlockedUpTo: Math.max(prev.unlockedUpTo, Math.min(stageId + 1, totalStages)),
+    unlockedUpTo: nextUnlock,
     bestTimes: { ...prev.bestTimes },
     bestStars: { ...prev.bestStars },
     cleared: { ...prev.cleared, [stageId]: true },
