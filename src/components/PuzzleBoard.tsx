@@ -8,6 +8,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import Confetti from "./Confetti";
 
 type Piece = {
   // Stable identity. id encodes the piece's original (row, col) for clarity.
@@ -521,6 +522,8 @@ function Board({
           {showPreview ? "👁 미리보기 ✓" : "👁 미리보기"}
         </button>
       </div>
+
+      {solved && <Confetti count={isBoss ? 60 : 36} />}
 
       {showSolveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-amber-900/55 backdrop-blur-sm p-6">
