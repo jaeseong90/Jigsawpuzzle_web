@@ -729,11 +729,10 @@ function Board({
                 transition: inGroup
                   ? "none"
                   : "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms",
-                boxShadow: inGroup
-                  ? "0 10px 24px rgba(0,0,0,0.32)"
-                  : inCorrect
-                  ? "none"
-                  : "inset 0 0 0 1px rgba(255,255,255,0.55)",
+                // Drop shadow only while picked up. No inset shadow when not
+                // dragging — borders below handle per-side separation so they
+                // can disappear precisely on the joined edges.
+                boxShadow: inGroup ? "0 10px 24px rgba(0,0,0,0.32)" : "none",
                 outline: isHead ? "2px solid #b45309" : "none",
                 outlineOffset: -2,
                 borderTop: j.top ? "0" : "1px solid rgba(255,255,255,0.55)",
