@@ -33,19 +33,33 @@ export default function StageSelect({ onPlay }: Props) {
     setResumeStageId(peekSavedStageId());
   }, []);
 
-  // Once we know progress, scroll to the chapter holding the latest unlocked stage.
-  useEffect(() => {
-    if (!progress) return;
-    const target = resumeStageId ?? progress.unlockedUpTo;
-    const chId = chapterIdForStage(target);
-    const el = chapterRefs.current.get(chId);
-    if (el) el.scrollIntoView({ block: "start", behavior: "auto" });
-  }, [progress, resumeStageId]);
-
   const clearedCount = useMemo(() => {
     if (!progress) return 0;
     return Object.keys(progress.cleared).length;
   }, [progress]);
+
+  // The first stage that's unlocked but still uncleared — the natural "next".
+  const nextStageId = useMemo<number | null>(() => {
+    if (!progress) return null;
+    const limit = Math.min(TOTAL_STAGE_COUNT, progress.unlockedUpTo);
+    let found: number | null = null;
+    for (let id = 1; id <= limit; id++) {
+      if (!progress.cleared[id]) {
+        found = id;
+        break;
+      }
+    }
+    return found;
+  }, [progress]);
+
+  // Once we know progress, scroll to the chapter holding the latest unlocked stage.
+  useEffect(() => {
+    if (!progress) return;
+    const target = resumeStageId ?? nextStageId ?? progress.unlockedUpTo;
+    const chId = chapterIdForStage(target);
+    const el = chapterRefs.current.get(chId);
+    if (el) el.scrollIntoView({ block: "start", behavior: "auto" });
+  }, [progress, resumeStageId, nextStageId]);
 
   const handleResetProgress = () => {
     setProgress(emptyProgress());
@@ -129,6 +143,7 @@ export default function StageSelect({ onPlay }: Props) {
                     stage={s}
                     progress={progress}
                     isResume={resumeStageId === s.id}
+                    isNext={nextStageId === s.id}
                     onPlay={onPlay}
                   />
                 ))}
@@ -180,11 +195,13 @@ function StageCard({
   stage,
   progress,
   isResume,
+  isNext,
   onPlay,
 }: {
   stage: Stage;
   progress: Progress | null;
   isResume: boolean;
+  isNext: boolean;
   onPlay: (s: Stage) => void;
 }) {
   const unlocked = progress ? stage.id <= progress.unlockedUpTo : stage.id === 1;
@@ -207,7 +224,11 @@ function StageCard({
           : cleared
           ? "border-emerald-500"
           : "border-amber-200"
-      } ${unlocked ? "active:scale-[0.97] transition-transform" : "opacity-60"}`}
+      } ${unlocked ? "active:scale-[0.97] transition-transform" : "opacity-60"} ${
+        isNext && !isResume
+          ? "ring-2 ring-amber-500 ring-offset-2 ring-offset-amber-50"
+          : ""
+      }`}
     >
       <div
         className="absolute inset-0"
