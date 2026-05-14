@@ -38,6 +38,9 @@ type Props = {
   totalStages?: number;
   // Time in ms below which the player earns 3 stars (par). 1.8× par → 2 stars; else 1.
   parTimeMs?: number;
+  // Best clear time the player has previously recorded for this stage. Used to
+  // detect new records on completion.
+  previousBestMs?: number;
   onSolved?: (durationMs: number, stars: number, hintsUsed: number) => void;
   onExit?: () => void;
   onNext?: () => void;
@@ -110,6 +113,7 @@ export default function PuzzleBoard(props: Props) {
             isBoss={props.isBoss}
             stageId={props.stageId}
             parTimeMs={props.parTimeMs}
+            previousBestMs={props.previousBestMs}
             onSolved={props.onSolved}
             onExit={props.onExit}
             onNext={props.onNext}
@@ -169,6 +173,7 @@ type BoardProps = {
   isBoss?: boolean;
   stageId?: number;
   parTimeMs?: number;
+  previousBestMs?: number;
   onSolved?: (durationMs: number, stars: number, hintsUsed: number) => void;
   onExit?: () => void;
   onNext?: () => void;
@@ -257,6 +262,7 @@ function Board({
   isBoss,
   stageId,
   parTimeMs,
+  previousBestMs,
   onSolved,
   onExit,
   onNext,
@@ -671,8 +677,26 @@ function Board({
             <div className="mt-2 text-amber-800 text-2xl font-semibold tabular-nums">
               {formatTime(elapsed)}
             </div>
-            <div className="mt-1 text-xs text-amber-700/70">
-              {hintsUsed === 0 ? "힌트 없이 클리어 ⭐" : `힌트 ${hintsUsed}회 사용`}
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-semibold">
+              {previousBestMs == null || elapsed < previousBestMs ? (
+                <span className="rounded-full bg-amber-700 text-white px-2.5 py-0.5">
+                  🏆 신기록
+                </span>
+              ) : (
+                <span className="rounded-full bg-amber-50 text-amber-700 px-2.5 py-0.5 border border-amber-200">
+                  이전 최고 {formatTime(previousBestMs)}
+                </span>
+              )}
+              {computeStars(elapsed, parTimeMs) === 3 && hintsUsed === 0 && (
+                <span className="rounded-full bg-rose-100 text-rose-700 px-2.5 py-0.5 border border-rose-200">
+                  💎 PERFECT
+                </span>
+              )}
+              {hintsUsed > 0 && (
+                <span className="rounded-full bg-amber-50 text-amber-700 px-2.5 py-0.5 border border-amber-200">
+                  힌트 {hintsUsed}
+                </span>
+              )}
             </div>
             <div className="mt-5 flex gap-2">
               <button

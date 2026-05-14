@@ -27,6 +27,10 @@ export default function Home() {
     const nextId = stage.id + 1;
     return nextId <= TOTAL_STAGE_COUNT && nextId <= progress.unlockedUpTo;
   }, [stage, progress]);
+  const previousBestMs = useMemo(() => {
+    if (!stage || !progress) return undefined;
+    return progress.bestTimes[stage.id];
+  }, [stage, progress]);
 
   if (!stage) {
     return <StageSelect onPlay={setStage} />;
@@ -61,6 +65,7 @@ export default function Home() {
       stageId={stage.id}
       totalStages={TOTAL_STAGE_COUNT}
       parTimeMs={par}
+      previousBestMs={previousBestMs}
       hasNext={hasNext}
       onSolved={handleSolved}
       onExit={handleExit}
