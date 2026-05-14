@@ -24,7 +24,18 @@ export default function StageSelect({ onPlay }: Props) {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [resumeStageId, setResumeStageId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
   const chapterRefs = useRef<Map<number, HTMLElement | null>>(new Map());
+
+  const showToast = (msg: string) => {
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    setToast(msg);
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, 1800);
+  };
 
   useEffect(() => {
     // Hydrate stage-select state from localStorage on mount (client-only).
@@ -156,6 +167,11 @@ export default function StageSelect({ onPlay }: Props) {
                     isResume={resumeStageId === s.id}
                     isNext={nextStageId === s.id}
                     onPlay={onPlay}
+                    onLockedTap={(stageId) => {
+                      const unlockedUpTo = progress?.unlockedUpTo ?? 1;
+                      showToast(`스테이지 ${unlockedUpTo}을(를) 먼저 클리어해 주세요`);
+                      void stageId;
+                    }}
                   />
                 ))}
               </div>
@@ -174,6 +190,14 @@ export default function StageSelect({ onPlay }: Props) {
         onClose={() => setSettingsOpen(false)}
         onResetProgress={handleResetProgress}
       />
+
+      {toast && (
+        <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4 pointer-events-none">
+          <div className="rounded-full bg-amber-900/90 text-white text-sm px-4 py-2 shadow-lg">
+            {toast}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -208,12 +232,14 @@ function StageCard({
   isResume,
   isNext,
   onPlay,
+  onLockedTap,
 }: {
   stage: Stage;
   progress: Progress | null;
   isResume: boolean;
   isNext: boolean;
   onPlay: (s: Stage) => void;
+  onLockedTap: (stageId: number) => void;
 }) {
   const unlocked = progress ? stage.id <= progress.unlockedUpTo : stage.id === 1;
   const cleared = progress ? !!progress.cleared[stage.id] : false;
@@ -227,8 +253,7 @@ function StageCard({
   return (
     <button
       type="button"
-      disabled={!unlocked}
-      onClick={() => onPlay(stage)}
+      onClick={() => (unlocked ? onPlay(stage) : onLockedTap(stage.id))}
       className={`relative aspect-square rounded-xl overflow-hidden text-left shadow-sm border ${
         stage.isBoss
           ? "border-rose-500"
