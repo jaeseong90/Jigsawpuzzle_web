@@ -27,6 +27,7 @@ export default function StageSelect({ onPlay }: Props) {
   const [dailyStageId, setDailyStageId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const toastTimerRef = useRef<number | null>(null);
   const chapterRefs = useRef<Map<number, HTMLElement | null>>(new Map());
 
@@ -65,6 +66,14 @@ export default function StageSelect({ onPlay }: Props) {
     }
     return found;
   }, [progress]);
+
+  // Show floating "to top" button once the player has scrolled past the
+  // initial viewport-worth of chapters.
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 640);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Once we know progress, scroll to the chapter holding the latest unlocked stage.
   useEffect(() => {
@@ -201,6 +210,18 @@ export default function StageSelect({ onPlay }: Props) {
             {toast}
           </div>
         </div>
+      )}
+
+      {showScrollTop && (
+        <button
+          type="button"
+          aria-label="맨 위로"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-4 right-4 z-30 w-11 h-11 rounded-full bg-amber-700 text-white text-lg shadow-lg active:scale-95 transition-transform"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          ↑
+        </button>
       )}
     </main>
   );

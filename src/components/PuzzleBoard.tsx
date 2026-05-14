@@ -655,11 +655,13 @@ function Board({
       >
         {showPreview && (
           <div
-            className="pointer-events-none absolute inset-0 opacity-30"
+            className="pointer-events-none absolute inset-0"
             style={{
               backgroundImage: `url(${imageSrc})`,
               backgroundSize: "100% 100%",
               backgroundRepeat: "no-repeat",
+              opacity: 0.42,
+              zIndex: 50,
             }}
           />
         )}
