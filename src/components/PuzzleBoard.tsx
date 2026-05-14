@@ -208,9 +208,10 @@ function Board({
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const [pieces, setPieces] = useState<Piece[]>(() => buildShuffledPieces(rows, cols));
-  const [dragId, setDragId] = useState<number | null>(null);
-  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [dragGroup, setDragGroup] = useState<Set<number> | null>(null);
+  const [dragHeadId, setDragHeadId] = useState<number | null>(null);
+  const [dragDelta, setDragDelta] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [hoverDelta, setHoverDelta] = useState<{ row: number; col: number } | null>(null);
   const [startedAt, setStartedAt] = useState<number>(() => Date.now());
   const [now, setNow] = useState<number>(() => Date.now());
   const [solved, setSolved] = useState(false);
@@ -222,7 +223,13 @@ function Board({
   const [pausedTotal, setPausedTotal] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
 
-  const dragOffsetRef = useRef<{ ox: number; oy: number; pointerId: number } | null>(null);
+  const dragOffsetRef = useRef<{
+    ox: number;
+    oy: number;
+    pointerId: number;
+    headStartCol: number;
+    headStartRow: number;
+  } | null>(null);
 
   useEffect(() => {
     if (solved) return;
@@ -273,73 +280,62 @@ function Board({
         ox: px - cc * pieceW,
         oy: py - cr * pieceH,
         pointerId: e.pointerId,
+        headStartCol: cc,
+        headStartRow: cr,
       };
-      setDragId(piece.id);
-      setDragPos({ x: cc * pieceW, y: cr * pieceH });
-      setHoverIndex(piece.currentIndex);
+      const group = findGroup(piece.id, pieces, cols, joined);
+      setDragGroup(group);
+      setDragHeadId(piece.id);
+      setDragDelta({ x: 0, y: 0 });
+      setHoverDelta({ row: 0, col: 0 });
     },
-    [solved, cols, pieceW, pieceH]
+    [solved, cols, pieceW, pieceH, pieces, joined]
   );
 
   const onPointerMove = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       const off = dragOffsetRef.current;
-      if (!off || off.pointerId !== e.pointerId || dragId === null) return;
+      if (!off || off.pointerId !== e.pointerId || dragGroup === null) return;
       const board = boardRef.current;
       if (!board) return;
       const rect = board.getBoundingClientRect();
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
-      const x = Math.max(-pieceW * 0.25, Math.min(boardSize.w - pieceW * 0.75, px - off.ox));
-      const y = Math.max(-pieceH * 0.25, Math.min(boardSize.h - pieceH * 0.75, py - off.oy));
-      setDragPos({ x, y });
-      // Target cell is determined by the pointer position, not the piece corner —
-      // matches the user's mental model ("I'm pointing at this cell").
-      const tc = Math.max(0, Math.min(cols - 1, Math.floor(px / pieceW)));
-      const tr = Math.max(0, Math.min(rows - 1, Math.floor(py / pieceH)));
-      setHoverIndex(tr * cols + tc);
+      // Head piece's desired top-left given the finger position.
+      const headX = px - off.ox;
+      const headY = py - off.oy;
+      const dx = headX - off.headStartCol * pieceW;
+      const dy = headY - off.headStartRow * pieceH;
+      setDragDelta({ x: dx, y: dy });
+      setHoverDelta({
+        row: Math.round(dy / pieceH),
+        col: Math.round(dx / pieceW),
+      });
     },
-    [dragId, boardSize.w, boardSize.h, pieceW, pieceH, cols, rows]
+    [dragGroup, pieceW, pieceH]
   );
 
   const finishDrag = useCallback(
-    (pointerId: number, e?: ReactPointerEvent<HTMLDivElement>) => {
+    (pointerId: number) => {
       const off = dragOffsetRef.current;
-      if (!off || off.pointerId !== pointerId || dragId === null) return;
+      if (!off || off.pointerId !== pointerId || dragGroup === null) return;
       dragOffsetRef.current = null;
 
-      let targetIndex: number | null = hoverIndex;
-      if (e) {
-        const board = boardRef.current;
-        if (board) {
-          const rect = board.getBoundingClientRect();
-          const px = e.clientX - rect.left;
-          const py = e.clientY - rect.top;
-          if (px >= 0 && px < boardSize.w && py >= 0 && py < boardSize.h) {
-            const tc = Math.floor(px / pieceW);
-            const tr = Math.floor(py / pieceH);
-            targetIndex = tr * cols + tc;
-          }
-        }
-      }
+      const groupIds = dragGroup;
+      const delta = dragDelta;
+      const rDeltaCol = Math.round(delta.x / pieceW);
+      const rDeltaRow = Math.round(delta.y / pieceH);
 
-      setDragId(null);
-      setDragPos(null);
-      setHoverIndex(null);
+      setDragGroup(null);
+      setDragHeadId(null);
+      setDragDelta({ x: 0, y: 0 });
+      setHoverDelta(null);
+
+      if (rDeltaCol === 0 && rDeltaRow === 0) return;
 
       setPieces((prev) => {
-        const dragged = prev.find((p) => p.id === dragId);
-        if (!dragged) return prev;
-        if (targetIndex == null || targetIndex === dragged.currentIndex) return prev;
-
-        const target = prev.find((p) => p.currentIndex === targetIndex);
-        if (!target) return prev;
-
-        const next = prev.map((p) => {
-          if (p.id === dragged.id) return { ...p, currentIndex: targetIndex! };
-          if (p.id === target.id) return { ...p, currentIndex: dragged.currentIndex };
-          return p;
-        });
+        const next = applyGroupMove(prev, groupIds, rDeltaRow, rDeltaCol, rows, cols);
+        if (!next) return prev;
 
         const isSolved = next.every((p) => p.currentIndex === p.origRow * cols + p.origCol);
         if (isSolved && !solved) {
@@ -351,7 +347,6 @@ function Board({
             navigator.vibrate([20, 40, 80]);
           }
         } else {
-          // Light haptic when a new adjacency click happens after this swap.
           const before = countJoinedEdges(prev, rows, cols);
           const after = countJoinedEdges(next, rows, cols);
           if (after > before && typeof navigator !== "undefined" && navigator.vibrate) {
@@ -361,7 +356,7 @@ function Board({
         return next;
       });
     },
-    [dragId, hoverIndex, boardSize.w, boardSize.h, pieceW, pieceH, cols, rows, solved, startedAt, pausedTotal, parTimeMs, hintsUsed, onSolved]
+    [dragGroup, dragDelta, pieceW, pieceH, rows, cols, solved, startedAt, pausedTotal, parTimeMs, hintsUsed, onSolved]
   );
 
   const totalPieces = rows * cols;
@@ -434,27 +429,54 @@ function Board({
             }}
           />
         )}
-        {dragId !== null && hoverIndex !== null && (
-          <div
-            className="pointer-events-none absolute rounded-md border-2 border-amber-700/60 bg-amber-700/10 transition-[transform] duration-100"
-            style={{
-              width: pieceW,
-              height: pieceH,
-              transform: `translate3d(${(hoverIndex % cols) * pieceW}px, ${
-                Math.floor(hoverIndex / cols) * pieceH
-              }px, 0)`,
-            }}
-          />
-        )}
+        {dragGroup && hoverDelta && (() => {
+          // Highlight each cell the group would land on at the current rounded delta.
+          // If any group piece would land out of bounds, show the highlight in red.
+          let anyOOB = false;
+          const cells: Array<{ r: number; c: number }> = [];
+          dragGroup.forEach((id) => {
+            const p = pieces.find((pp) => pp.id === id);
+            if (!p) return;
+            const cr = Math.floor(p.currentIndex / cols);
+            const cc = p.currentIndex % cols;
+            const nr = cr + hoverDelta.row;
+            const nc = cc + hoverDelta.col;
+            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) {
+              anyOOB = true;
+              return;
+            }
+            cells.push({ r: nr, c: nc });
+          });
+          const color = anyOOB ? "rgba(220,38,38,0.6)" : "rgba(180,83,9,0.6)";
+          const bg = anyOOB ? "rgba(220,38,38,0.10)" : "rgba(180,83,9,0.10)";
+          return (
+            <>
+              {cells.map((cell, i) => (
+                <div
+                  key={i}
+                  className="pointer-events-none absolute rounded-sm"
+                  style={{
+                    width: pieceW,
+                    height: pieceH,
+                    transform: `translate3d(${cell.c * pieceW}px, ${cell.r * pieceH}px, 0)`,
+                    border: `2px solid ${color}`,
+                    background: bg,
+                  }}
+                />
+              ))}
+            </>
+          );
+        })()}
 
         {pieces.map((p) => {
-          const isDragging = dragId === p.id;
+          const inGroup = dragGroup?.has(p.id) ?? false;
+          const isHead = dragHeadId === p.id;
           const cr = Math.floor(p.currentIndex / cols);
           const cc = p.currentIndex % cols;
           const baseX = cc * pieceW;
           const baseY = cr * pieceH;
-          const x = isDragging && dragPos ? dragPos.x : baseX;
-          const y = isDragging && dragPos ? dragPos.y : baseY;
+          const x = inGroup ? baseX + dragDelta.x : baseX;
+          const y = inGroup ? baseY + dragDelta.y : baseY;
           const j = joined[p.id] ?? { top: false, right: false, bottom: false, left: false };
           const inCorrect = p.currentIndex === p.origRow * cols + p.origCol;
           return (
@@ -464,20 +486,20 @@ function Board({
               style={{
                 width: pieceW,
                 height: pieceH,
-                transform: `translate3d(${x}px, ${y}px, 0) ${isDragging ? "scale(1.04)" : ""}`,
-                zIndex: isDragging ? 100 : inCorrect ? 1 : 2,
+                transform: `translate3d(${x}px, ${y}px, 0) ${inGroup ? "scale(1.02)" : ""}`,
+                zIndex: inGroup ? 100 + (isHead ? 1 : 0) : inCorrect ? 1 : 2,
                 backgroundImage: `url(${imageSrc})`,
                 backgroundSize: `${boardSize.w}px ${boardSize.h}px`,
                 backgroundPosition: `-${p.origCol * pieceW}px -${p.origRow * pieceH}px`,
-                transition: isDragging
+                transition: inGroup
                   ? "none"
                   : "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-                boxShadow: isDragging
-                  ? "0 10px 24px rgba(0,0,0,0.35)"
+                boxShadow: inGroup
+                  ? "0 10px 24px rgba(0,0,0,0.32)"
                   : inCorrect
                   ? "none"
                   : "inset 0 0 0 1px rgba(255,255,255,0.55)",
-                outline: isDragging ? "2px solid #b45309" : "none",
+                outline: isHead ? "2px solid #b45309" : "none",
                 outlineOffset: -2,
                 borderTop: j.top ? "0" : "1px solid rgba(255,255,255,0.55)",
                 borderRight: j.right ? "0" : "1px solid rgba(255,255,255,0.55)",
@@ -486,7 +508,7 @@ function Board({
               }}
               onPointerDown={(e) => onPointerDown(e, p)}
               onPointerMove={onPointerMove}
-              onPointerUp={(e) => finishDrag(e.pointerId, e)}
+              onPointerUp={(e) => finishDrag(e.pointerId)}
               onPointerCancel={(e) => finishDrag(e.pointerId)}
             />
           );
@@ -600,6 +622,105 @@ function countJoinedEdges(pieces: Piece[], rows: number, cols: number): number {
     if (v.bottom) n++;
   }
   return n;
+}
+
+// BFS across joined adjacencies starting from `startId`.
+// Returns the ids of every piece in the same connected cluster.
+function findGroup(
+  startId: number,
+  pieces: Piece[],
+  cols: number,
+  joined: Record<number, Joined>
+): Set<number> {
+  const byIdx = new Map<number, Piece>();
+  for (const p of pieces) byIdx.set(p.currentIndex, p);
+  const byId = new Map<number, Piece>();
+  for (const p of pieces) byId.set(p.id, p);
+
+  const visited = new Set<number>();
+  const queue: number[] = [startId];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    const p = byId.get(id);
+    const j = joined[id];
+    if (!p || !j) continue;
+    const ci = p.currentIndex;
+    if (j.right) {
+      const n = byIdx.get(ci + 1);
+      if (n) queue.push(n.id);
+    }
+    if (j.left) {
+      const n = byIdx.get(ci - 1);
+      if (n) queue.push(n.id);
+    }
+    if (j.top) {
+      const n = byIdx.get(ci - cols);
+      if (n) queue.push(n.id);
+    }
+    if (j.bottom) {
+      const n = byIdx.get(ci + cols);
+      if (n) queue.push(n.id);
+    }
+  }
+  return visited;
+}
+
+// Rigidly translate every piece in `groupIds` by (rDeltaRow, rDeltaCol) cells.
+// Non-group pieces in cells the group now occupies are displaced to the cells
+// the group just vacated (paired by sorted index).
+// Returns null if the move would push any group piece out of bounds.
+function applyGroupMove(
+  pieces: Piece[],
+  groupIds: Set<number>,
+  rDeltaRow: number,
+  rDeltaCol: number,
+  rows: number,
+  cols: number
+): Piece[] | null {
+  const groupPieces = pieces.filter((p) => groupIds.has(p.id));
+  if (groupPieces.length === 0) return null;
+
+  const oldGroupCells = new Set<number>();
+  for (const p of groupPieces) oldGroupCells.add(p.currentIndex);
+
+  const newGroupMap = new Map<number, number>();
+  for (const p of groupPieces) {
+    const cr = Math.floor(p.currentIndex / cols);
+    const cc = p.currentIndex % cols;
+    const ncr = cr + rDeltaRow;
+    const ncc = cc + rDeltaCol;
+    if (ncr < 0 || ncr >= rows || ncc < 0 || ncc >= cols) return null;
+    newGroupMap.set(p.id, ncr * cols + ncc);
+  }
+  const newGroupCells = new Set<number>(newGroupMap.values());
+  // Should never collide internally under a rigid translation, but guard anyway.
+  if (newGroupCells.size !== groupPieces.length) return null;
+
+  const vacated: number[] = [];
+  for (const c of oldGroupCells) if (!newGroupCells.has(c)) vacated.push(c);
+  const contested: number[] = [];
+  for (const c of newGroupCells) if (!oldGroupCells.has(c)) contested.push(c);
+  vacated.sort((a, b) => a - b);
+  contested.sort((a, b) => a - b);
+
+  const displaceMap = new Map<number, number>();
+  for (const p of pieces) {
+    if (groupIds.has(p.id)) continue;
+    const idx = contested.indexOf(p.currentIndex);
+    if (idx !== -1) {
+      displaceMap.set(p.id, vacated[idx]);
+    }
+  }
+
+  return pieces.map((p) => {
+    const ng = newGroupMap.get(p.id);
+    if (ng != null) return { ...p, currentIndex: ng };
+    const dp = displaceMap.get(p.id);
+    if (dp != null) return { ...p, currentIndex: dp };
+    return p;
+  });
 }
 
 function StarsRow({ count }: { count: number }) {
