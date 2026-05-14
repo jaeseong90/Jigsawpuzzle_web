@@ -5,6 +5,8 @@ import { clearSavedGame } from "@/lib/savedGame";
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound";
 import StatsCard from "./StatsCard";
 
+const TUTORIAL_SEEN_KEY = "jigsaw:tutorial-seen";
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -89,6 +91,24 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
 
           <button
             type="button"
+            onClick={() => {
+              try {
+                localStorage.removeItem(TUTORIAL_SEEN_KEY);
+              } catch {
+                /* ignore */
+              }
+              onClose();
+              // The tutorial component checks the flag on mount; reload to pop the
+              // sheet stack cleanly and re-trigger the modal.
+              if (typeof window !== "undefined") window.location.reload();
+            }}
+            className="w-full rounded-xl bg-amber-50 text-amber-900 border border-amber-200 px-4 py-3 text-sm font-semibold text-left"
+          >
+            📖 놀이 방법 다시 보기
+          </button>
+
+          <button
+            type="button"
             onClick={handleReset}
             className={`w-full rounded-xl px-4 py-3 text-sm font-semibold text-left transition-colors ${
               confirming
@@ -105,7 +125,7 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
         </div>
 
         <div className="mt-5 text-center text-[11px] text-amber-700/60">
-          직소퍼즐 PWA · 100 스테이지
+          직소퍼즐 PWA · 끝없는 스테이지 ∞
         </div>
       </div>
     </div>

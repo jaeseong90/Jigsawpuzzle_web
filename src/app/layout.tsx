@@ -4,7 +4,7 @@ import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
   title: "직소퍼즐",
-  description: "100 스테이지의 모바일 직소퍼즐",
+  description: "끝없는 스테이지의 모바일 직소퍼즐",
   applicationName: "직소퍼즐",
   appleWebApp: {
     capable: true,

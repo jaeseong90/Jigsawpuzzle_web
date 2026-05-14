@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "직소퍼즐",
     short_name: "직소퍼즐",
-    description: "100 스테이지의 모바일 직소퍼즐 — 한 칸씩 자리를 바꿔가며 그림을 완성하세요",
+    description: "끝없는 스테이지의 모바일 직소퍼즐 — 한 칸씩 자리를 바꿔가며 그림을 완성하세요",
     start_url: "/",
     display: "standalone",
     orientation: "portrait",
