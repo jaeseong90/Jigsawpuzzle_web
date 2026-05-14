@@ -9,6 +9,12 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import Confetti from "./Confetti";
+import {
+  clearSavedGame,
+  loadGameFor,
+  saveGame,
+  type SavedGameSnapshot,
+} from "@/lib/savedGame";
 
 type Piece = {
   // Stable identity. id encodes the piece's original (row, col) for clarity.
@@ -101,6 +107,7 @@ export default function PuzzleBoard(props: Props) {
             cols={cols}
             boardSize={boardSize}
             isBoss={props.isBoss}
+            stageId={props.stageId}
             parTimeMs={props.parTimeMs}
             onSolved={props.onSolved}
             onExit={props.onExit}
@@ -159,12 +166,50 @@ type BoardProps = {
   cols: number;
   boardSize: { w: number; h: number };
   isBoss?: boolean;
+  stageId?: number;
   parTimeMs?: number;
   onSolved?: (durationMs: number, stars: number, hintsUsed: number) => void;
   onExit?: () => void;
   onNext?: () => void;
   hasNext?: boolean;
 };
+
+type InitialBoardState = {
+  pieces: Piece[];
+  elapsedMs: number;
+  hintsLeft: number;
+  hintsUsed: number;
+};
+
+function initialBoardState(
+  stageId: number | undefined,
+  rows: number,
+  cols: number,
+  initialHints: number
+): InitialBoardState {
+  if (stageId != null) {
+    const saved: SavedGameSnapshot | null = loadGameFor(stageId);
+    if (saved && saved.pieces.length === rows * cols) {
+      return {
+        pieces: saved.pieces.map((p) => ({
+          id: p.id,
+          origRow: p.origRow,
+          origCol: p.origCol,
+          currentIndex: p.currentIndex,
+        })),
+        elapsedMs: saved.elapsedMs,
+        hintsLeft: saved.hintsLeft,
+        hintsUsed: saved.hintsUsed,
+      };
+    }
+  }
+  return {
+    pieces: buildShuffledPieces(rows, cols),
+    elapsedMs: 0,
+    hintsLeft: initialHints,
+    hintsUsed: 0,
+  };
+}
 
 function computeStars(durationMs: number, parMs: number | undefined): 1 | 2 | 3 {
   if (!parMs || parMs <= 0) return 1;
@@ -209,6 +254,7 @@ function Board({
   cols,
   boardSize,
   isBoss,
+  stageId,
   parTimeMs,
   onSolved,
   onExit,
@@ -217,18 +263,24 @@ function Board({
 }: BoardProps) {
   const boardRef = useRef<HTMLDivElement | null>(null);
 
-  const [pieces, setPieces] = useState<Piece[]>(() => buildShuffledPieces(rows, cols));
+  const initialHints = isBoss ? 2 : 3;
+  const [initial] = useState<InitialBoardState>(() =>
+    initialBoardState(stageId, rows, cols, initialHints)
+  );
+
+  const [pieces, setPieces] = useState<Piece[]>(initial.pieces);
   const [dragGroup, setDragGroup] = useState<Set<number> | null>(null);
   const [dragHeadId, setDragHeadId] = useState<number | null>(null);
   const [dragDelta, setDragDelta] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [hoverDelta, setHoverDelta] = useState<{ row: number; col: number } | null>(null);
-  const [startedAt, setStartedAt] = useState<number>(() => Date.now());
+  // Treat the resumed elapsed time as "already played": shift startedAt backwards so
+  // the on-screen timer continues from where the previous session left off.
+  const [startedAt, setStartedAt] = useState<number>(() => Date.now() - initial.elapsedMs);
   const [now, setNow] = useState<number>(() => Date.now());
   const [solved, setSolved] = useState(false);
   const [showSolveModal, setShowSolveModal] = useState(false);
-  const initialHints = isBoss ? 2 : 3;
-  const [hintsLeft, setHintsLeft] = useState(initialHints);
-  const [hintsUsed, setHintsUsed] = useState(0);
+  const [hintsLeft, setHintsLeft] = useState(initial.hintsLeft);
+  const [hintsUsed, setHintsUsed] = useState(initial.hintsUsed);
   const [pausedAt, setPausedAt] = useState<number | null>(null);
   const [pausedTotal, setPausedTotal] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
@@ -268,6 +320,52 @@ function Board({
     if (!solved) return;
     const t = window.setTimeout(() => setShowSolveModal(true), 800);
     return () => window.clearTimeout(t);
+  }, [solved]);
+
+  // Snapshot the in-progress puzzle so closing the tab and returning resumes
+  // exactly where the player left off.
+  useEffect(() => {
+    if (stageId == null || solved) return;
+    const elapsedMs = Math.max(0, Date.now() - startedAt - pausedTotal);
+    saveGame({
+      stageId,
+      pieces: pieces.map((p) => ({
+        id: p.id,
+        origRow: p.origRow,
+        origCol: p.origCol,
+        currentIndex: p.currentIndex,
+      })),
+      elapsedMs,
+      hintsLeft,
+      hintsUsed,
+    });
+  }, [pieces, hintsLeft, hintsUsed, startedAt, pausedTotal, stageId, solved]);
+
+  // Also persist on tab hide so the snapshot survives mobile suspensions.
+  useEffect(() => {
+    const onVis = () => {
+      if (!document.hidden || stageId == null || solved) return;
+      const elapsedMs = Math.max(0, Date.now() - startedAt - pausedTotal);
+      saveGame({
+        stageId,
+        pieces: pieces.map((p) => ({
+          id: p.id,
+          origRow: p.origRow,
+          origCol: p.origCol,
+          currentIndex: p.currentIndex,
+        })),
+        elapsedMs,
+        hintsLeft,
+        hintsUsed,
+      });
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [stageId, pieces, hintsLeft, hintsUsed, startedAt, pausedTotal, solved]);
+
+  // Once solved, drop the snapshot so the next entry is a fresh shuffle.
+  useEffect(() => {
+    if (solved) clearSavedGame();
   }, [solved]);
 
   const pieceW = boardSize.w / cols;
@@ -401,6 +499,7 @@ function Board({
 
   const reshuffle = useCallback(() => {
     if (solved) return;
+    clearSavedGame();
     setPieces(buildShuffledPieces(rows, cols));
     setStartedAt(Date.now());
     setPausedTotal(0);
