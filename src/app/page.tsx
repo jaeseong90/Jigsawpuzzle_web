@@ -11,7 +11,7 @@ import {
 } from "@/data/stages";
 import { getStageImageDataUrl } from "@/lib/stageImage";
 import { loadProgress, recordClear, type Progress } from "@/lib/progress";
-import { loadDaily, recordDailyClear } from "@/lib/daily";
+import { getDailyStageId, loadDaily, recordDailyClear } from "@/lib/daily";
 
 export default function Home() {
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -32,6 +32,10 @@ export default function Home() {
     if (!stage || !progress) return undefined;
     return progress.bestTimes[stage.id];
   }, [stage, progress]);
+  const isDailyStage = useMemo(() => {
+    if (!stage) return false;
+    return getDailyStageId() === stage.id;
+  }, [stage]);
 
   if (!stage) {
     return <StageSelect onPlay={setStage} />;
@@ -72,6 +76,7 @@ export default function Home() {
       totalStages={TOTAL_STAGE_COUNT}
       parTimeMs={par}
       previousBestMs={previousBestMs}
+      isDaily={isDailyStage}
       hasNext={hasNext}
       onSolved={handleSolved}
       onExit={handleExit}

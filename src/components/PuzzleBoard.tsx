@@ -41,6 +41,8 @@ type Props = {
   // Best clear time the player has previously recorded for this stage. Used to
   // detect new records on completion.
   previousBestMs?: number;
+  // True when this stage matches the daily challenge for today.
+  isDaily?: boolean;
   onSolved?: (durationMs: number, stars: number, hintsUsed: number) => void;
   onExit?: () => void;
   onNext?: () => void;
@@ -114,6 +116,7 @@ export default function PuzzleBoard(props: Props) {
             stageId={props.stageId}
             parTimeMs={props.parTimeMs}
             previousBestMs={props.previousBestMs}
+            isDaily={props.isDaily}
             onSolved={props.onSolved}
             onExit={props.onExit}
             onNext={props.onNext}
@@ -174,6 +177,7 @@ type BoardProps = {
   stageId?: number;
   parTimeMs?: number;
   previousBestMs?: number;
+  isDaily?: boolean;
   onSolved?: (durationMs: number, stars: number, hintsUsed: number) => void;
   onExit?: () => void;
   onNext?: () => void;
@@ -263,6 +267,7 @@ function Board({
   stageId,
   parTimeMs,
   previousBestMs,
+  isDaily,
   onSolved,
   onExit,
   onNext,
@@ -811,6 +816,11 @@ function Board({
               {computeStars(elapsed, parTimeMs) === 3 && hintsUsed === 0 && (
                 <span className="rounded-full bg-rose-100 text-rose-700 px-2.5 py-0.5 border border-rose-200">
                   💎 PERFECT
+                </span>
+              )}
+              {isDaily && (
+                <span className="rounded-full bg-amber-500 text-white px-2.5 py-0.5 border border-amber-500">
+                  ✨ 오늘의 도전
                 </span>
               )}
               <span className="rounded-full bg-amber-50 text-amber-700 px-2.5 py-0.5 border border-amber-200">
