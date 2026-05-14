@@ -72,34 +72,20 @@ export default function StageSelect({ onPlay }: Props) {
         <div>
           <h1 className="text-2xl font-bold text-amber-900">직소퍼즐</h1>
           <p className="mt-0.5 text-xs text-amber-800/80">
-            {clearedCount} / {TOTAL_STAGE_COUNT} 스테이지 완료
+            {clearedCount} 스테이지 클리어 · 1만+ 스테이지 ∞
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <ProgressRing total={TOTAL_STAGE_COUNT} done={clearedCount} />
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            aria-label="설정"
-            className="rounded-full bg-white shadow-sm border border-amber-200 w-9 h-9 flex items-center justify-center text-amber-900"
-          >
-            <span className="text-base" aria-hidden>
-              ⚙
-            </span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          aria-label="설정"
+          className="rounded-full bg-white shadow-sm border border-amber-200 w-10 h-10 flex items-center justify-center text-amber-900"
+        >
+          <span className="text-lg" aria-hidden>
+            ⚙
+          </span>
+        </button>
       </header>
-
-      {progress && clearedCount >= TOTAL_STAGE_COUNT && (
-        <div className="mt-4 rounded-2xl bg-gradient-to-r from-amber-400 via-rose-400 to-amber-400 text-white px-5 py-4 text-center shadow-md">
-          <div className="text-base font-bold">🏆 100 스테이지 모두 클리어!</div>
-          <div className="text-xs opacity-90 mt-0.5 tabular-nums">
-            획득한 별 {Object.values(progress.bestStars).reduce((a, b) => a + b, 0)} /
-            {" "}
-            {TOTAL_STAGE_COUNT * 3}
-          </div>
-        </div>
-      )}
 
       <DailyBanner onPlay={onPlay} />
 
@@ -316,34 +302,6 @@ function StageCard({
         </div>
       )}
     </button>
-  );
-}
-
-function ProgressRing({ total, done }: { total: number; done: number }) {
-  const r = 18;
-  const c = 2 * Math.PI * r;
-  const pct = total > 0 ? done / total : 0;
-  const offset = c * (1 - pct);
-  return (
-    <div className="relative w-12 h-12">
-      <svg viewBox="0 0 48 48" className="w-full h-full -rotate-90">
-        <circle cx="24" cy="24" r={r} fill="none" stroke="#fde68a" strokeWidth="4" />
-        <circle
-          cx="24"
-          cy="24"
-          r={r}
-          fill="none"
-          stroke="#b45309"
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-amber-900 tabular-nums">
-        {Math.round(pct * 100)}%
-      </div>
-    </div>
   );
 }
 

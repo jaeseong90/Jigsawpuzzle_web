@@ -65,9 +65,9 @@ export default function StatsCard() {
 
   return (
     <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 space-y-2 text-sm">
-      <Row label="클리어한 스테이지" value={`${summary.cleared} / 100`} />
-      <Row label="획득한 별" value={`${summary.totalStars} / 300`} />
-      <Row label="보스 격파" value={`${summary.bossesCleared} / 10`} />
+      <Row label="클리어한 스테이지" value={`${summary.cleared}`} />
+      <Row label="획득한 별" value={`★ ${summary.totalStars}`} />
+      <Row label="보스 격파" value={`${summary.bossesCleared}`} />
       {summary.fastestTime != null && summary.fastestStageId != null && (
         <Row
           label="최단 클리어"

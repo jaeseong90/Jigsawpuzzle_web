@@ -8,10 +8,17 @@ export type Achievement = {
   check: (p: Progress) => boolean;
 };
 
-const bossIds = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100] as const;
-
 function clearedCount(p: Progress): number {
   return Object.keys(p.cleared).length;
+}
+
+function bossesCleared(p: Progress): number {
+  let n = 0;
+  for (const idStr of Object.keys(p.cleared)) {
+    const id = parseInt(idStr, 10);
+    if (id % 10 === 0) n += 1;
+  }
+  return n;
 }
 
 function threeStarCount(p: Progress): number {
@@ -45,25 +52,32 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     check: (p) => clearedCount(p) >= 50,
   },
   {
-    id: "all-clears",
+    id: "hundred-clears",
     icon: "🏆",
-    title: "마스터",
-    description: "100 스테이지 모두 클리어",
+    title: "마라톤",
+    description: "100 스테이지 클리어",
     check: (p) => clearedCount(p) >= 100,
+  },
+  {
+    id: "five-hundred-clears",
+    icon: "🚀",
+    title: "전설의 여행자",
+    description: "500 스테이지 클리어",
+    check: (p) => clearedCount(p) >= 500,
   },
   {
     id: "first-boss",
     icon: "👑",
     title: "보스 사냥꾼",
     description: "첫 보스 격파",
-    check: (p) => bossIds.some((id) => p.cleared[id]),
+    check: (p) => bossesCleared(p) >= 1,
   },
   {
-    id: "all-boss",
+    id: "ten-bosses",
     icon: "🐉",
     title: "보스 마스터",
-    description: "모든 보스 격파",
-    check: (p) => bossIds.every((id) => p.cleared[id]),
+    description: "보스 10회 격파",
+    check: (p) => bossesCleared(p) >= 10,
   },
   {
     id: "first-three-star",
@@ -80,11 +94,11 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     check: (p) => threeStarCount(p) >= 10,
   },
   {
-    id: "all-three-star",
+    id: "fifty-three-stars",
     icon: "💎",
     title: "완벽주의자",
-    description: "모든 스테이지 3성",
-    check: (p) => threeStarCount(p) >= 100,
+    description: "3성 클리어 50회",
+    check: (p) => threeStarCount(p) >= 50,
   },
 ];
 
