@@ -296,6 +296,7 @@ function Board({
   const [history, setHistory] = useState<Piece[][]>([]);
   const initialUndos = isBoss ? 3 : 5;
   const [undosLeft, setUndosLeft] = useState(initialUndos);
+  const [moveCount, setMoveCount] = useState(0);
 
   const dragOffsetRef = useRef<{
     ox: number;
@@ -504,6 +505,7 @@ function Board({
 
         // Record the pre-move snapshot so the undo stack can roll back.
         setHistory((h) => [...h.slice(-9), prev]);
+        setMoveCount((n) => n + 1);
 
         const isSolved = next.every((p) => p.currentIndex === p.origRow * cols + p.origCol);
         if (isSolved && !solved) {
@@ -551,6 +553,7 @@ function Board({
       const occ = prev.find((p) => p.currentIndex === home);
       if (!occ) return prev;
       setHistory((h) => [...h.slice(-9), prev]);
+      setMoveCount((n) => n + 1);
       return prev.map((p) => {
         if (p.id === target.id) return { ...p, currentIndex: home };
         if (p.id === occ.id) return { ...p, currentIndex: target.currentIndex };
@@ -578,6 +581,7 @@ function Board({
     setHintsUsed(0);
     setHistory([]);
     setUndosLeft(initialUndos);
+    setMoveCount(0);
     setSolved(false);
     setShowSolveModal(false);
   }, [rows, cols, initialHints, initialUndos]);
@@ -588,6 +592,7 @@ function Board({
     setPieces(last);
     setHistory((h) => h.slice(0, -1));
     setUndosLeft((u) => u - 1);
+    setMoveCount((n) => Math.max(0, n - 1));
     setDragGroup(null);
     setDragHeadId(null);
     setDragDelta({ x: 0, y: 0 });
@@ -620,6 +625,7 @@ function Board({
     setHintsUsed(0);
     setHistory([]);
     setUndosLeft(initialUndos);
+    setMoveCount(0);
   }, [rows, cols, solved, initialHints, initialUndos, reshuffleConfirming]);
 
   return (
@@ -807,6 +813,9 @@ function Board({
                   💎 PERFECT
                 </span>
               )}
+              <span className="rounded-full bg-amber-50 text-amber-700 px-2.5 py-0.5 border border-amber-200">
+                {moveCount}회 이동
+              </span>
               {hintsUsed > 0 && (
                 <span className="rounded-full bg-amber-50 text-amber-700 px-2.5 py-0.5 border border-amber-200">
                   힌트 {hintsUsed}
