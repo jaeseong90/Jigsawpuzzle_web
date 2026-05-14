@@ -13,6 +13,7 @@ import { peekSavedStageId } from "@/lib/savedGame";
 import { getStageImageDataUrl } from "@/lib/stageImage";
 import TutorialTip from "./TutorialTip";
 import SettingsSheet from "./SettingsSheet";
+import AchievementsRow from "./AchievementsRow";
 
 type Props = {
   onPlay: (stage: Stage) => void;
@@ -73,6 +74,8 @@ export default function StageSelect({ onPlay }: Props) {
           </button>
         </div>
       </header>
+
+      <AchievementsRow progress={progress} />
 
       {resumeStageId != null && (
         <ResumeBanner
