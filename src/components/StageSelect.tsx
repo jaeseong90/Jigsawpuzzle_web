@@ -11,6 +11,7 @@ import {
 import { emptyProgress, loadProgress, type Progress } from "@/lib/progress";
 import { peekSavedStageId } from "@/lib/savedGame";
 import { getStageImageDataUrl, getStagePalette } from "@/lib/stageImage";
+import { getDailyStageId } from "@/lib/daily";
 import TutorialTip from "./TutorialTip";
 import SettingsSheet from "./SettingsSheet";
 import AchievementsRow from "./AchievementsRow";
@@ -23,6 +24,7 @@ type Props = {
 export default function StageSelect({ onPlay }: Props) {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [resumeStageId, setResumeStageId] = useState<number | null>(null);
+  const [dailyStageId, setDailyStageId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
@@ -42,6 +44,7 @@ export default function StageSelect({ onPlay }: Props) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setProgress(loadProgress());
     setResumeStageId(peekSavedStageId());
+    setDailyStageId(getDailyStageId());
   }, []);
 
   const clearedCount = useMemo(() => {
@@ -166,6 +169,7 @@ export default function StageSelect({ onPlay }: Props) {
                     progress={progress}
                     isResume={resumeStageId === s.id}
                     isNext={nextStageId === s.id}
+                    isDaily={dailyStageId === s.id}
                     onPlay={onPlay}
                     onLockedTap={(stageId) => {
                       const unlockedUpTo = progress?.unlockedUpTo ?? 1;
@@ -231,6 +235,7 @@ function StageCard({
   progress,
   isResume,
   isNext,
+  isDaily,
   onPlay,
   onLockedTap,
 }: {
@@ -238,6 +243,7 @@ function StageCard({
   progress: Progress | null;
   isResume: boolean;
   isNext: boolean;
+  isDaily: boolean;
   onPlay: (s: Stage) => void;
   onLockedTap: (stageId: number) => void;
 }) {
@@ -324,6 +330,11 @@ function StageCard({
       {isResume && (
         <div className="absolute top-1 left-1 rounded-full bg-amber-700 text-white text-[10px] px-1.5 py-0.5 font-bold shadow">
           이어하기
+        </div>
+      )}
+      {isDaily && !isResume && (
+        <div className="absolute top-1 left-1 rounded-full bg-amber-500 text-white text-[10px] px-1.5 py-0.5 font-bold shadow">
+          오늘
         </div>
       )}
     </button>
