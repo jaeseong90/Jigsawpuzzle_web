@@ -101,7 +101,7 @@ export default function PuzzleBoard(props: Props) {
       />
       <div
         ref={containerRef}
-        className="relative flex-1 mx-3 mb-4 mt-2 overflow-hidden flex items-center justify-center"
+        className="relative flex-1 mx-2 mb-3 mt-1 overflow-hidden flex items-center justify-center"
       >
         {boardSize ? (
           <Board
@@ -291,6 +291,8 @@ function Board({
   const [pausedAt, setPausedAt] = useState<number | null>(null);
   const [pausedTotal, setPausedTotal] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
+  const [reshuffleConfirming, setReshuffleConfirming] = useState(false);
+  const reshuffleTimerRef = useRef<number | null>(null);
 
   const dragOffsetRef = useRef<{
     ox: number;
@@ -510,6 +512,20 @@ function Board({
 
   const reshuffle = useCallback(() => {
     if (solved) return;
+    if (!reshuffleConfirming) {
+      setReshuffleConfirming(true);
+      if (reshuffleTimerRef.current) window.clearTimeout(reshuffleTimerRef.current);
+      reshuffleTimerRef.current = window.setTimeout(() => {
+        setReshuffleConfirming(false);
+        reshuffleTimerRef.current = null;
+      }, 2200);
+      return;
+    }
+    if (reshuffleTimerRef.current) {
+      window.clearTimeout(reshuffleTimerRef.current);
+      reshuffleTimerRef.current = null;
+    }
+    setReshuffleConfirming(false);
     clearSavedGame();
     setPieces(buildShuffledPieces(rows, cols));
     setStartedAt(Date.now());
@@ -517,7 +533,7 @@ function Board({
     setPausedAt(null);
     setHintsLeft(initialHints);
     setHintsUsed(0);
-  }, [rows, cols, solved, initialHints]);
+  }, [rows, cols, solved, initialHints, reshuffleConfirming]);
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -640,9 +656,13 @@ function Board({
           type="button"
           onClick={reshuffle}
           disabled={solved}
-          className="rounded-full bg-white text-amber-900 px-4 py-2 text-sm font-medium shadow-sm border border-amber-200 active:scale-95 transition-transform disabled:opacity-50"
+          className={`rounded-full px-4 py-2 text-sm font-medium shadow-sm border active:scale-95 transition-transform disabled:opacity-50 ${
+            reshuffleConfirming
+              ? "bg-rose-600 text-white border-rose-600"
+              : "bg-white text-amber-900 border-amber-200"
+          }`}
         >
-          🔀 다시 섞기
+          {reshuffleConfirming ? "한 번 더 누르기" : "🔀 다시 섞기"}
         </button>
         <button
           type="button"
