@@ -725,9 +725,10 @@ function Board({
                 backgroundImage: `url(${imageSrc})`,
                 backgroundSize: `${boardSize.w}px ${boardSize.h}px`,
                 backgroundPosition: `-${p.origCol * pieceW}px -${p.origRow * pieceH}px`,
+                opacity: dragGroup && !inGroup ? 0.78 : 1,
                 transition: inGroup
                   ? "none"
-                  : "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+                  : "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms",
                 boxShadow: inGroup
                   ? "0 10px 24px rgba(0,0,0,0.32)"
                   : inCorrect
