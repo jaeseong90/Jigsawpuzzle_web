@@ -17,21 +17,30 @@ import SettingsSheet from "./SettingsSheet";
 import DailyBanner from "./DailyBanner";
 import LevelChip from "./LevelChip";
 import PhotoGallery from "./PhotoGallery";
+import PersonalPhotoPicker from "./PersonalPhotoPicker";
 
 type Props = {
   progressOverride?: Progress | null;
   onPlay: (stage: Stage) => void;
+  onPersonal: (opts: {
+    imageSrc: string;
+    rows: number;
+    cols: number;
+    rotate: boolean;
+  }) => void;
 };
 
 export default function StageSelect({
   progressOverride,
   onPlay,
+  onPersonal,
 }: Props) {
   const [progress, setProgress] = useState<Progress | null>(progressOverride ?? null);
   const [resumeStageId, setResumeStageId] = useState<number | null>(null);
   const [dailyStageId, setDailyStageId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [personalOpen, setPersonalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const toastTimerRef = useRef<number | null>(null);
@@ -125,6 +134,21 @@ export default function StageSelect({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPersonalOpen(true)}
+            aria-label="내 사진"
+            className="press-95 w-10 h-10 rounded-full flex items-center justify-center"
+            style={{
+              background: "var(--accent)",
+              color: "var(--accent-fg)",
+              border: "1px solid var(--accent)",
+            }}
+          >
+            <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>
+              ＋
+            </span>
+          </button>
           <button
             type="button"
             onClick={() => setGalleryOpen(true)}
@@ -302,6 +326,14 @@ export default function StageSelect({
       <PhotoGallery
         open={galleryOpen}
         onClose={() => setGalleryOpen(false)}
+      />
+      <PersonalPhotoPicker
+        open={personalOpen}
+        onClose={() => setPersonalOpen(false)}
+        onStart={(opts) => {
+          setPersonalOpen(false);
+          onPersonal(opts);
+        }}
       />
 
       {toast && (

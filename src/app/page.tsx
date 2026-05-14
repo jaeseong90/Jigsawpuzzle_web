@@ -36,6 +36,13 @@ type View =
       baseStage: Stage;
       activeStage: Stage;
       difficulty: Difficulty;
+    }
+  | {
+      kind: "personal";
+      imageSrc: string;
+      rows: number;
+      cols: number;
+      rotate: boolean;
     };
 
 export default function Home() {
@@ -93,7 +100,41 @@ export default function Home() {
   };
 
   if (view.kind === "menu") {
-    return <StageSelect progressOverride={progress} onPlay={launchStage} />;
+    return (
+      <StageSelect
+        progressOverride={progress}
+        onPlay={launchStage}
+        onPersonal={(opts) =>
+          setView({
+            kind: "personal",
+            imageSrc: opts.imageSrc,
+            rows: opts.rows,
+            cols: opts.cols,
+            rotate: opts.rotate,
+          })
+        }
+      />
+    );
+  }
+
+  if (view.kind === "personal") {
+    return (
+      <PuzzleBoard
+        key={`personal-${view.rows}x${view.cols}-${view.rotate}`}
+        imageSrc={view.imageSrc}
+        rows={view.rows}
+        cols={view.cols}
+        stageLabel="내 사진"
+        parTimeMs={view.rows * view.cols * 5500}
+        difficulty={view.rotate ? "master" : "standard"}
+        hasNext={false}
+        onSolved={() => {
+          /* personal puzzles don't grant XP or affect progress */
+        }}
+        onExit={() => setView({ kind: "menu" })}
+        onNext={() => setView({ kind: "menu" })}
+      />
+    );
   }
 
   const { baseStage, activeStage, difficulty } = view;
