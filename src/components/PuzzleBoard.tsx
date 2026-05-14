@@ -18,6 +18,7 @@ import {
 import { playSnap, playSolve } from "@/lib/sound";
 import type { Difficulty } from "@/lib/difficulty";
 import { getDifficultyMeta } from "@/lib/difficulty";
+import { shareClear, type ShareResult } from "@/lib/shareCard";
 
 type Rotation = 0 | 1 | 2 | 3;
 
@@ -117,6 +118,7 @@ export default function PuzzleBoard(props: Props) {
             boardSize={boardSize}
             isBoss={props.isBoss}
             stageId={props.stageId}
+            stageLabel={props.stageLabel}
             parTimeMs={props.parTimeMs}
             previousBestMs={props.previousBestMs}
             isDaily={props.isDaily}
@@ -197,6 +199,7 @@ type BoardProps = {
   boardSize: { w: number; h: number };
   isBoss?: boolean;
   stageId?: number;
+  stageLabel?: string;
   parTimeMs?: number;
   previousBestMs?: number;
   isDaily?: boolean;
@@ -313,6 +316,7 @@ function Board({
   boardSize,
   isBoss,
   stageId,
+  stageLabel,
   parTimeMs,
   previousBestMs,
   isDaily,
@@ -957,6 +961,8 @@ function Board({
 
       {showSolveModal && (
         <SolveModal
+          stageId={stageId}
+          stageLabel={stageLabel}
           isBoss={!!isBoss}
           isDaily={!!isDaily}
           difficulty={difficulty}
@@ -1170,6 +1176,8 @@ function PauseOverlay({
 }
 
 function SolveModal({
+  stageId,
+  stageLabel,
   isBoss,
   isDaily,
   difficulty,
@@ -1184,6 +1192,8 @@ function SolveModal({
   onNext,
   nextLabel,
 }: {
+  stageId?: number;
+  stageLabel?: string;
   isBoss: boolean;
   isDaily: boolean;
   difficulty?: Difficulty;
@@ -1202,6 +1212,38 @@ function SolveModal({
   const isPerfect = stars === 3 && hintsUsed === 0;
   const isNewRecord = previousBestMs == null || elapsed < previousBestMs;
   const diff = difficulty ? getDifficultyMeta(difficulty) : null;
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareToast, setShareToast] = useState<string | null>(null);
+  const isPersonal = stageId == null;
+
+  const handleShare = async () => {
+    if (shareBusy) return;
+    setShareBusy(true);
+    try {
+      const result: ShareResult = await shareClear({
+        stageId: stageId ?? 0,
+        stageTitle: stageLabel ?? "Puzzle",
+        durationMs: elapsed,
+        stars,
+        difficulty: difficulty ?? "standard",
+        isBoss,
+        isDaily,
+        isPersonal,
+      });
+      const label =
+        result === "shared"
+          ? "공유됨"
+          : result === "downloaded"
+          ? "이미지가 저장됐어요"
+          : result === "text-copied"
+          ? "텍스트가 복사됐어요"
+          : "공유 실패";
+      setShareToast(label);
+      window.setTimeout(() => setShareToast(null), 2200);
+    } finally {
+      setShareBusy(false);
+    }
+  };
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 flex items-end justify-center p-3 pointer-events-none solve-sheet-enter">
@@ -1244,7 +1286,20 @@ function SolveModal({
           {hintsUsed > 0 && <Tag tone="soft">힌트 {hintsUsed}</Tag>}
           {flowBest >= 4 && <Tag tone="accent">Flow ×{flowBest}</Tag>}
         </div>
-        <div className="mt-5 flex gap-2">
+        <button
+          type="button"
+          onClick={handleShare}
+          disabled={shareBusy}
+          className="press-95 mt-4 w-full rounded-full py-2.5 text-[12px] font-semibold tracking-[0.16em] uppercase"
+          style={{
+            background: "transparent",
+            color: "var(--ink-2)",
+            border: "1px solid var(--line)",
+          }}
+        >
+          {shareBusy ? "그리는 중…" : shareToast ?? "↗ 결과 공유"}
+        </button>
+        <div className="mt-3 flex gap-2">
           <button
             type="button"
             onClick={onExit}
