@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { clearSavedGame } from "@/lib/savedGame";
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound";
+import StatsCard from "./StatsCard";
 
 type Props = {
   open: boolean;
@@ -59,6 +60,8 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
         </div>
 
         <div className="mt-4 space-y-3">
+          <StatsCard />
+
           <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
             <div>
               <div className="text-sm font-semibold text-amber-900">소리</div>
