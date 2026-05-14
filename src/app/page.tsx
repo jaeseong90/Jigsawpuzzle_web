@@ -23,6 +23,10 @@ import {
 import { recordDailyHistory } from "@/lib/dailyHistory";
 import { applyTheme, loadTheme } from "@/lib/theme";
 import {
+  installFirstInteractionResume,
+  installVisibilityHook,
+} from "@/lib/ambient";
+import {
   applyDifficulty,
   loadDefaultDifficulty,
   type Difficulty,
@@ -53,6 +57,8 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setProgress(loadProgress());
     applyTheme(loadTheme());
+    installFirstInteractionResume();
+    installVisibilityHook();
   }, []);
 
   // Warm cache for the upcoming stage photo.

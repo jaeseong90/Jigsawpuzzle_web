@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { clearSavedGame } from "@/lib/savedGame";
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound";
+import { isAmbientEnabled, setAmbientEnabled } from "@/lib/ambient";
 import { loadProgress } from "@/lib/progress";
 import { loadTheme, saveTheme, type Theme } from "@/lib/theme";
 import {
@@ -52,6 +53,7 @@ type Props = {
 export default function SettingsSheet({ open, onClose, onResetProgress }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
+  const [ambientOn, setAmbientOn] = useState(false);
   const [theme, setTheme] = useState<Theme>("system");
   const [difficulty, setDifficulty] = useState<Difficulty>("standard");
   const [shareToast, setShareToast] = useState<string | null>(null);
@@ -62,6 +64,7 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSoundOn(isSoundEnabled());
+    setAmbientOn(isAmbientEnabled());
     setTheme(loadTheme());
     setDifficulty(loadDefaultDifficulty());
   }, [open]);
@@ -208,29 +211,23 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
           </div>
 
           <Row label="소리" hint="스냅 / 완성 효과음">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={soundOn}
-              onClick={() => {
-                const next = !soundOn;
-                setSoundOn(next);
-                setSoundEnabled(next);
+            <ToggleSwitch
+              checked={soundOn}
+              onChange={(v) => {
+                setSoundOn(v);
+                setSoundEnabled(v);
               }}
-              className="relative h-7 w-12 rounded-full transition-colors"
-              style={{
-                background: soundOn ? "var(--accent)" : "var(--bg-elevated)",
-                border: "1px solid var(--line)",
+            />
+          </Row>
+
+          <Row label="앰비언트" hint="잔잔한 드론 + 종소리 (생성된 사운드)">
+            <ToggleSwitch
+              checked={ambientOn}
+              onChange={(v) => {
+                setAmbientOn(v);
+                setAmbientEnabled(v);
               }}
-            >
-              <span
-                className="absolute top-0.5 h-6 w-6 rounded-full shadow transition-all"
-                style={{
-                  background: "var(--bg-surface)",
-                  left: soundOn ? "calc(100% - 1.625rem)" : "0.125rem",
-                }}
-              />
-            </button>
+            />
           </Row>
 
           <ActionRow label="갤러리" hint="완성한 그림 다시 보기" onClick={() => setGalleryOpen(true)} />
@@ -303,6 +300,37 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
       <PhotoGallery open={galleryOpen} onClose={() => setGalleryOpen(false)} />
       <DailyCalendar open={calendarOpen} onClose={() => setCalendarOpen(false)} />
     </div>
+  );
+}
+
+function ToggleSwitch({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="relative h-7 w-12 rounded-full transition-colors"
+      style={{
+        background: checked ? "var(--accent)" : "var(--bg-surface)",
+        border: "1px solid var(--line)",
+      }}
+    >
+      <span
+        className="absolute top-0.5 h-6 w-6 rounded-full transition-all"
+        style={{
+          background: checked ? "var(--accent-fg)" : "var(--bg-surface)",
+          left: checked ? "calc(100% - 1.625rem)" : "0.125rem",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.18)",
+        }}
+      />
+    </button>
   );
 }
 
