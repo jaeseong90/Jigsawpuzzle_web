@@ -53,3 +53,16 @@ export function clearSavedGame(): void {
     /* ignore */
   }
 }
+
+export function peekSavedStageId(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(SAVED_GAME_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SavedGameSnapshot> | null;
+    if (parsed && typeof parsed.stageId === "number") return parsed.stageId;
+    return null;
+  } catch {
+    return null;
+  }
+}
