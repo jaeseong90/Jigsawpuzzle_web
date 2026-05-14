@@ -293,6 +293,9 @@ function Board({
   const [showPreview, setShowPreview] = useState(false);
   const [reshuffleConfirming, setReshuffleConfirming] = useState(false);
   const reshuffleTimerRef = useRef<number | null>(null);
+  const [history, setHistory] = useState<Piece[][]>([]);
+  const initialUndos = isBoss ? 3 : 5;
+  const [undosLeft, setUndosLeft] = useState(initialUndos);
 
   const dragOffsetRef = useRef<{
     ox: number;
@@ -499,6 +502,9 @@ function Board({
         const next = applyGroupMove(prev, groupIds, rDeltaRow, rDeltaCol, rows, cols);
         if (!next) return prev;
 
+        // Record the pre-move snapshot so the undo stack can roll back.
+        setHistory((h) => [...h.slice(-9), prev]);
+
         const isSolved = next.every((p) => p.currentIndex === p.origRow * cols + p.origCol);
         if (isSolved && !solved) {
           const duration = Math.max(0, Date.now() - startedAt - pausedTotal);
@@ -544,6 +550,7 @@ function Board({
       const home = target.origRow * cols + target.origCol;
       const occ = prev.find((p) => p.currentIndex === home);
       if (!occ) return prev;
+      setHistory((h) => [...h.slice(-9), prev]);
       return prev.map((p) => {
         if (p.id === target.id) return { ...p, currentIndex: home };
         if (p.id === occ.id) return { ...p, currentIndex: target.currentIndex };
@@ -554,6 +561,19 @@ function Board({
     setHintsUsed((h) => h + 1);
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(12);
   }, [solved, hintsLeft, cols]);
+
+  const undo = useCallback(() => {
+    if (solved || undosLeft <= 0 || history.length === 0) return;
+    const last = history[history.length - 1];
+    setPieces(last);
+    setHistory((h) => h.slice(0, -1));
+    setUndosLeft((u) => u - 1);
+    setDragGroup(null);
+    setDragHeadId(null);
+    setDragDelta({ x: 0, y: 0 });
+    setHoverDelta(null);
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
+  }, [solved, undosLeft, history]);
 
   const reshuffle = useCallback(() => {
     if (solved) return;
@@ -578,7 +598,9 @@ function Board({
     setPausedAt(null);
     setHintsLeft(initialHints);
     setHintsUsed(0);
-  }, [rows, cols, solved, initialHints, reshuffleConfirming]);
+    setHistory([]);
+    setUndosLeft(initialUndos);
+  }, [rows, cols, solved, initialHints, initialUndos, reshuffleConfirming]);
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -696,37 +718,45 @@ function Board({
         })}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 flex-wrap justify-center">
         <button
           type="button"
-          onClick={reshuffle}
-          disabled={solved}
-          className={`rounded-full px-4 py-2 text-sm font-medium shadow-sm border active:scale-95 transition-transform disabled:opacity-50 ${
-            reshuffleConfirming
-              ? "bg-rose-600 text-white border-rose-600"
-              : "bg-white text-amber-900 border-amber-200"
-          }`}
+          onClick={undo}
+          disabled={solved || undosLeft <= 0 || history.length === 0}
+          className="rounded-full bg-white text-amber-900 px-3 py-2 text-sm font-medium shadow-sm border border-amber-200 active:scale-95 transition-transform disabled:opacity-50"
         >
-          {reshuffleConfirming ? "한 번 더 누르기" : "🔀 다시 섞기"}
+          ↶ 되돌리기 {undosLeft}
         </button>
         <button
           type="button"
           onClick={useHint}
           disabled={solved || hintsLeft <= 0}
-          className="rounded-full bg-amber-700 text-white px-4 py-2 text-sm font-semibold shadow-sm active:scale-95 transition-transform disabled:bg-amber-300"
+          className="rounded-full bg-amber-700 text-white px-3 py-2 text-sm font-semibold shadow-sm active:scale-95 transition-transform disabled:bg-amber-300"
         >
           💡 힌트 {hintsLeft}
         </button>
         <button
           type="button"
           onClick={() => setShowPreview((v) => !v)}
-          className={`rounded-full px-4 py-2 text-sm font-medium shadow-sm active:scale-95 transition-transform border ${
+          className={`rounded-full px-3 py-2 text-sm font-medium shadow-sm active:scale-95 transition-transform border ${
             showPreview
               ? "bg-amber-200 text-amber-900 border-amber-300"
               : "bg-white text-amber-900 border-amber-200"
           }`}
         >
           {showPreview ? "👁 미리보기 ✓" : "👁 미리보기"}
+        </button>
+        <button
+          type="button"
+          onClick={reshuffle}
+          disabled={solved}
+          className={`rounded-full px-3 py-2 text-sm font-medium shadow-sm border active:scale-95 transition-transform disabled:opacity-50 ${
+            reshuffleConfirming
+              ? "bg-rose-600 text-white border-rose-600"
+              : "bg-white text-amber-900 border-amber-200"
+          }`}
+        >
+          {reshuffleConfirming ? "한 번 더 누르기" : "🔀 다시 섞기"}
         </button>
       </div>
 
