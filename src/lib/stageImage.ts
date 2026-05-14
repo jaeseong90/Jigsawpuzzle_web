@@ -35,6 +35,11 @@ const PATTERNS = [
   "triangles",
   "stripes",
   "mountain",
+  "heart",
+  "flower",
+  "star",
+  "bubbles",
+  "waves",
 ] as const;
 type Pattern = (typeof PATTERNS)[number];
 
@@ -114,6 +119,104 @@ function drawStripes(rng: () => number, palette: readonly string[]): string {
   return svgWrap(s);
 }
 
+function drawHeart(rng: () => number, palette: readonly string[]): string {
+  const cx = W / 2;
+  const cy = H / 2 + 20;
+  const r = 200 + rng() * 60;
+  let s = bg(palette[0]);
+  for (let i = 0; i < 10; i++) {
+    const angle = rng() * Math.PI * 2;
+    const dist = 290 + rng() * 80;
+    const px = cx + dist * Math.cos(angle);
+    const py = cy + dist * Math.sin(angle);
+    const rr = 18 + rng() * 32;
+    s += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${rr.toFixed(1)}" fill="${palette[1]}" opacity="0.55"/>`;
+  }
+  const path = `M ${cx} ${(cy + r * 0.45).toFixed(1)} C ${(cx - r * 1.25).toFixed(1)} ${(cy - r * 0.25).toFixed(1)}, ${(cx - r * 0.9).toFixed(1)} ${(cy - r * 1.05).toFixed(1)}, ${cx} ${(cy - r * 0.1).toFixed(1)} C ${(cx + r * 0.9).toFixed(1)} ${(cy - r * 1.05).toFixed(1)}, ${(cx + r * 1.25).toFixed(1)} ${(cy - r * 0.25).toFixed(1)}, ${cx} ${(cy + r * 0.45).toFixed(1)} Z`;
+  s += `<path d="${path}" fill="${palette[2]}"/>`;
+  s += `<path d="${path}" fill="${palette[3]}" opacity="0.4" transform="translate(8,8)"/>`;
+  return svgWrap(s);
+}
+
+function drawFlower(rng: () => number, palette: readonly string[]): string {
+  const cx = W / 2;
+  const cy = H / 2;
+  const petalCount = 5 + Math.floor(rng() * 3); // 5..7 petals
+  const petalR = 130 + rng() * 40;
+  const dist = 130 + rng() * 30;
+  let s = bg(palette[0]);
+  for (let i = 0; i < petalCount; i++) {
+    const angle = (i / petalCount) * Math.PI * 2;
+    const px = cx + dist * Math.cos(angle);
+    const py = cy + dist * Math.sin(angle);
+    const rotDeg = ((angle * 180) / Math.PI).toFixed(1);
+    s += `<ellipse cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" rx="${petalR.toFixed(1)}" ry="${(petalR * 0.55).toFixed(1)}" fill="${palette[2]}" opacity="0.92" transform="rotate(${rotDeg} ${px.toFixed(1)} ${py.toFixed(1)})"/>`;
+  }
+  s += `<circle cx="${cx}" cy="${cy}" r="${(petalR * 0.55).toFixed(1)}" fill="${palette[1]}"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${(petalR * 0.3).toFixed(1)}" fill="${palette[3]}" opacity="0.7"/>`;
+  return svgWrap(s);
+}
+
+function drawStar(rng: () => number, palette: readonly string[]): string {
+  const cx = W / 2;
+  const cy = H / 2;
+  const R = 240 + rng() * 40;
+  const r = R * (0.4 + rng() * 0.1);
+  const rot = rng() * 30;
+  let s = bg(palette[0]);
+  // Background pattern: a few faint stars scattered around
+  for (let i = 0; i < 8; i++) {
+    const sx = rng() * W;
+    const sy = rng() * H;
+    const sR = 30 + rng() * 30;
+    s += `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${sR.toFixed(1)}" fill="${palette[1]}" opacity="0.4"/>`;
+  }
+  const pts: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const angle = (i * Math.PI) / 5 - Math.PI / 2;
+    const rad = i % 2 === 0 ? R : r;
+    pts.push(`${(cx + Math.cos(angle) * rad).toFixed(1)},${(cy + Math.sin(angle) * rad).toFixed(1)}`);
+  }
+  s += `<polygon points="${pts.join(" ")}" fill="${palette[2]}" transform="rotate(${rot.toFixed(1)} ${cx} ${cy})"/>`;
+  s += `<polygon points="${pts.join(" ")}" fill="${palette[3]}" opacity="0.35" transform="rotate(${(rot + 7).toFixed(1)} ${cx} ${cy})"/>`;
+  return svgWrap(s);
+}
+
+function drawBubbles(rng: () => number, palette: readonly string[]): string {
+  let s = bg(palette[0]);
+  const colors = [palette[1], palette[2], palette[3]];
+  const count = 28 + Math.floor(rng() * 12);
+  for (let i = 0; i < count; i++) {
+    const cx = rng() * W;
+    const cy = rng() * H;
+    const r = 30 + rng() * 80;
+    const c = colors[i % colors.length];
+    s += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="${c}" opacity="${(0.55 + rng() * 0.4).toFixed(2)}"/>`;
+    // tiny highlight
+    s += `<circle cx="${(cx - r * 0.3).toFixed(1)}" cy="${(cy - r * 0.3).toFixed(1)}" r="${(r * 0.18).toFixed(1)}" fill="white" opacity="0.35"/>`;
+  }
+  return svgWrap(s);
+}
+
+function drawWaves(rng: () => number, palette: readonly string[]): string {
+  let s = bg(palette[0]);
+  const bands = 4 + Math.floor(rng() * 3);
+  const colors = [palette[1], palette[2], palette[3]];
+  for (let b = 0; b < bands; b++) {
+    const baseY = (H / bands) * (b + 0.5) + (rng() - 0.5) * 40;
+    const amp = 40 + rng() * 80;
+    const wavelength = 220 + rng() * 200;
+    let path = `M -20 ${(baseY + 200).toFixed(1)}`;
+    for (let x = -20; x <= W + 20; x += 10) {
+      const y = baseY + Math.sin((x / wavelength) * Math.PI * 2 + b) * amp;
+      path += ` L ${x} ${y.toFixed(1)}`;
+    }
+    path += ` L ${W + 20} ${H + 20} L -20 ${H + 20} Z`;
+    s += `<path d="${path}" fill="${colors[b % colors.length]}" opacity="${(0.6 + (b / bands) * 0.35).toFixed(2)}"/>`;
+  }
+  return svgWrap(s);
+}
+
 function drawMountain(rng: () => number, palette: readonly string[]): string {
   // Sky → sun → 3 mountain layers → optional foreground
   const sky = palette[0];
@@ -149,9 +252,15 @@ function drawMountain(rng: () => number, palette: readonly string[]): string {
 
 function generateSvg(stageId: number): string {
   // Compose palette and pattern from stage id so the result is fully deterministic.
+  // Pattern cycles every 10 stages; palette advances every full pattern cycle so
+  // adjacent stages always look different.
   const rng = seedRng(stageId * 7919 + 31);
-  const palette = PALETTES[(stageId - 1) % PALETTES.length];
-  const pattern: Pattern = PATTERNS[(stageId - 1) % PATTERNS.length];
+  const patternIdx = (stageId - 1) % PATTERNS.length;
+  const paletteIdx =
+    (Math.floor((stageId - 1) / PATTERNS.length) +
+      patternIdx * 3) % PALETTES.length;
+  const palette = PALETTES[paletteIdx];
+  const pattern: Pattern = PATTERNS[patternIdx];
   switch (pattern) {
     case "circles":
       return drawCircles(rng, palette);
@@ -163,6 +272,16 @@ function generateSvg(stageId: number): string {
       return drawStripes(rng, palette);
     case "mountain":
       return drawMountain(rng, palette);
+    case "heart":
+      return drawHeart(rng, palette);
+    case "flower":
+      return drawFlower(rng, palette);
+    case "star":
+      return drawStar(rng, palette);
+    case "bubbles":
+      return drawBubbles(rng, palette);
+    case "waves":
+      return drawWaves(rng, palette);
   }
 }
 
@@ -179,7 +298,11 @@ export function getStageImageDataUrl(stageId: number): string {
 }
 
 export function getStagePalette(stageId: number): readonly [string, string, string, string] {
-  return PALETTES[(stageId - 1) % PALETTES.length];
+  const patternIdx = (stageId - 1) % PATTERNS.length;
+  const paletteIdx =
+    (Math.floor((stageId - 1) / PATTERNS.length) +
+      patternIdx * 3) % PALETTES.length;
+  return PALETTES[paletteIdx];
 }
 
 // Re-export for components that want a literal escape helper (e.g. for stage labels).
