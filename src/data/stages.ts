@@ -55,21 +55,24 @@ export type Chapter = {
   range: [number, number];
   title: string;
   subtitle: string;
+  // Seed namespace fed to the image source so each chapter draws from its own
+  // photo pool. Random within the namespace, but consistent across reloads.
+  themeSeed: string;
 };
 
-// Each chapter covers 100 stages with a curated name. Beyond chapter 10 we
-// auto-generate "스테이지 1001+" style sections so the roster feels open-ended.
-const NAMED_CHAPTERS: ReadonlyArray<Pick<Chapter, "title" | "subtitle">> = [
-  { title: "따뜻한 시작", subtitle: "퍼즐과 친해지기" },
-  { title: "호기심", subtitle: "조금 더 큰 그림" },
-  { title: "여정", subtitle: "탄력이 붙는 시간" },
-  { title: "도전", subtitle: "보스가 강해진다" },
-  { title: "발견", subtitle: "패턴을 익히는 단계" },
-  { title: "깊이", subtitle: "그림이 한층 풍성" },
-  { title: "변주", subtitle: "익숙함을 깨는 색" },
-  { title: "통찰", subtitle: "전략이 필요해진다" },
-  { title: "절정", subtitle: "조각이 더 작아짐" },
-  { title: "마스터", subtitle: "끝까지 가는 길" },
+const NAMED_CHAPTERS: ReadonlyArray<
+  Pick<Chapter, "title" | "subtitle" | "themeSeed">
+> = [
+  { title: "정원", subtitle: "초록과 빛의 시작", themeSeed: "garden" },
+  { title: "수면", subtitle: "물에 비친 풍경", themeSeed: "tideline" },
+  { title: "도시", subtitle: "선과 빛의 도면", themeSeed: "metropole" },
+  { title: "여행", subtitle: "낯선 거리의 결", themeSeed: "wayfare" },
+  { title: "정물", subtitle: "탁자 위 고요", themeSeed: "stilllife" },
+  { title: "황혼", subtitle: "해가 기울어진 시간", themeSeed: "vespers" },
+  { title: "원경", subtitle: "멀리 펼쳐진 결", themeSeed: "horizon" },
+  { title: "건축", subtitle: "기하와 무게", themeSeed: "atelier" },
+  { title: "야경", subtitle: "어둠을 가르는 빛", themeSeed: "nocturne" },
+  { title: "광장", subtitle: "사람과 시간이 모이는 곳", themeSeed: "agora" },
 ];
 
 function buildChapters(): Chapter[] {
@@ -84,6 +87,7 @@ function buildChapters(): Chapter[] {
       range: [start, end],
       title: named?.title ?? `스테이지 ${start}-${end}`,
       subtitle: named?.subtitle ?? "끝없이 이어지는 길",
+      themeSeed: named?.themeSeed ?? `endless-${id}`,
     });
     id += 1;
   }
@@ -94,6 +98,11 @@ export const CHAPTERS: ReadonlyArray<Chapter> = buildChapters();
 
 export function chapterIdForStage(stageId: number): number {
   return Math.min(CHAPTERS.length, Math.max(1, Math.ceil(stageId / 100)));
+}
+
+export function chapterForStage(stageId: number): Chapter {
+  const id = chapterIdForStage(stageId);
+  return CHAPTERS[id - 1];
 }
 
 // Target time per piece in milliseconds. Beating this earns 3 stars.
@@ -111,4 +120,3 @@ export function starsFromTime(stage: Stage, durationMs: number): 1 | 2 | 3 {
   if (durationMs <= par * 1.8) return 2;
   return 1;
 }
-

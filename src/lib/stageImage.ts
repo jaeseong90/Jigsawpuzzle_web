@@ -2,13 +2,18 @@
 //
 // We use Picsum (https://picsum.photos) — curated Unsplash photography served
 // from a free, no-key CDN.
-// - Normal stages use seeded random photos (same seed → same photo each time).
-// - Boss stages pull from a hand-picked list of striking landscape IDs so
-//   every 10th stage has a noticeably premium feel.
+// - Boss stages pull from a hand-picked list of striking high-quality
+//   landscape IDs so every 10th stage has a noticeably premium feel.
+// - Normal stages use seeded random photos. The seed includes the chapter's
+//   themeSeed so each chapter has its own photo namespace — the player sees
+//   a different visual pool as they progress through chapters.
+
+import { chapterForStage } from "@/data/stages";
 
 const SIZE = 720;
 
-// Picsum image IDs known to be high-quality landscapes / nature shots.
+// Curated Picsum image IDs known to render as compelling photos for the
+// boss spotlight. Beyond this list we fall back to seeded random.
 const BOSS_IMAGE_IDS = [
   1015, // misty mountain
   1018, // city skyline
@@ -20,6 +25,26 @@ const BOSS_IMAGE_IDS = [
   1074, // snowy summit
   1062, // forest path
   1011, // ocean cliff
+  1025, // dog portrait — wildcard charm
+  1029, // forest light
+  1031, // sunset boat
+  1036, // alpine lake
+  1039, // cliff overlook
+  1043, // mirrored building
+  1048, // tunnel architecture
+  1050, // boats at dock
+  1053, // rocky shore
+  1059, // city architecture
+  1067, // ocean swell
+  1069, // pier perspective
+  1073, // valley dusk
+  1080, // wildflowers
+  1081, // canyon ridge
+  1083, // marble texture
+  1084, // city lights
+  658, // architecture
+  790, // dramatic clouds
+  855, // golden field
 ];
 
 export function getStageImageDataUrl(stageId: number): string {
@@ -30,18 +55,17 @@ export function getStageImageUrl(stageId: number, size: number = SIZE): string {
   const isBoss = stageId % 10 === 0;
   if (isBoss) {
     const bossIndex = Math.max(0, Math.floor(stageId / 10) - 1);
-    // First N bosses use hand-curated Picsum IDs; the rest fall back to seeded
-    // random photos with a "boss" prefix so they still differ from normal seeds.
     if (bossIndex < BOSS_IMAGE_IDS.length) {
       return `https://picsum.photos/id/${BOSS_IMAGE_IDS[bossIndex]}/${size}/${size}`;
     }
-    return `https://picsum.photos/seed/boss-${stageId}/${size}/${size}`;
+    return `https://picsum.photos/seed/tessera-boss-${stageId}/${size}/${size}`;
   }
-  return `https://picsum.photos/seed/jigsaw-${stageId}/${size}/${size}`;
+  const chapter = chapterForStage(stageId);
+  return `https://picsum.photos/seed/${chapter.themeSeed}-${stageId}/${size}/${size}`;
 }
 
 // A small palette per stage — used for accent rings and progress UI while
-// the photo is still loading.
+// the photo is still loading. (Currently only kept for back-compat callers.)
 const ACCENTS: ReadonlyArray<readonly [string, string, string, string]> = [
   ["#fde68a", "#f59e0b", "#b45309", "#78350f"],
   ["#fecaca", "#f87171", "#dc2626", "#7f1d1d"],
