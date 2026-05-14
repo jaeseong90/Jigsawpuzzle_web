@@ -190,9 +190,16 @@ function Board({
   const [dragId, setDragId] = useState<number | null>(null);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [startedAt] = useState<number>(() => Date.now());
+  const [startedAt, setStartedAt] = useState<number>(() => Date.now());
   const [now, setNow] = useState<number>(() => Date.now());
   const [solved, setSolved] = useState(false);
+  const [showSolveModal, setShowSolveModal] = useState(false);
+  const initialHints = isBoss ? 2 : 3;
+  const [hintsLeft, setHintsLeft] = useState(initialHints);
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [pausedAt, setPausedAt] = useState<number | null>(null);
+  const [pausedTotal, setPausedTotal] = useState(0);
+  const [showPreview, setShowPreview] = useState(false);
 
   const dragOffsetRef = useRef<{ ox: number; oy: number; pointerId: number } | null>(null);
 
@@ -200,6 +207,29 @@ function Board({
     if (solved) return;
     const id = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(id);
+  }, [solved]);
+
+  // Pause the timer while the tab is hidden so background time doesn't inflate the record.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden) {
+        setPausedAt(Date.now());
+      } else {
+        setPausedAt((prev) => {
+          if (prev != null) setPausedTotal((t) => t + (Date.now() - prev));
+          return null;
+        });
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  // Give the player a brief moment to see the completed image before showing the modal.
+  useEffect(() => {
+    if (!solved) return;
+    const t = window.setTimeout(() => setShowSolveModal(true), 800);
+    return () => window.clearTimeout(t);
   }, [solved]);
 
   const pieceW = boardSize.w / cols;
@@ -317,23 +347,71 @@ function Board({
     () => pieces.filter((p) => p.currentIndex === p.origRow * cols + p.origCol).length,
     [pieces, cols]
   );
-  const elapsed = Math.max(0, now - startedAt);
+  const effectiveStop = pausedAt ?? now;
+  const elapsed = Math.max(0, effectiveStop - startedAt - pausedTotal);
+
+  const useHint = useCallback(() => {
+    if (solved || hintsLeft <= 0) return;
+    setPieces((prev) => {
+      const wrong = prev.filter(
+        (p) => p.currentIndex !== p.origRow * cols + p.origCol
+      );
+      if (wrong.length === 0) return prev;
+      const target = wrong[Math.floor(Math.random() * wrong.length)];
+      const home = target.origRow * cols + target.origCol;
+      const occ = prev.find((p) => p.currentIndex === home);
+      if (!occ) return prev;
+      return prev.map((p) => {
+        if (p.id === target.id) return { ...p, currentIndex: home };
+        if (p.id === occ.id) return { ...p, currentIndex: target.currentIndex };
+        return p;
+      });
+    });
+    setHintsLeft((h) => h - 1);
+    setHintsUsed((h) => h + 1);
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(12);
+  }, [solved, hintsLeft, cols]);
+
+  const reshuffle = useCallback(() => {
+    if (solved) return;
+    setPieces(buildShuffledPieces(rows, cols));
+    setStartedAt(Date.now());
+    setPausedTotal(0);
+    setPausedAt(null);
+    setHintsLeft(initialHints);
+    setHintsUsed(0);
+  }, [rows, cols, solved, initialHints]);
 
   return (
-    <div className="relative flex flex-col items-center gap-3">
-      <div
-        className="rounded-full bg-white/90 px-4 py-1.5 text-sm font-medium text-amber-900 tabular-nums shadow-sm"
-      >
-        {formatTime(elapsed)} · {correctCount}/{totalPieces}
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex items-center gap-2">
+        <div className="rounded-full bg-white/90 px-4 py-1.5 text-sm font-medium text-amber-900 tabular-nums shadow-sm">
+          {formatTime(elapsed)} · {correctCount}/{totalPieces}
+        </div>
+        {pausedAt != null && (
+          <div className="rounded-full bg-amber-700 text-white px-2.5 py-1 text-xs font-medium shadow-sm">
+            일시정지
+          </div>
+        )}
       </div>
 
       <div
         ref={boardRef}
-        className={`relative rounded-lg ${
+        className={`relative rounded-lg overflow-hidden ${
           isBoss ? "ring-4 ring-rose-500/60" : "ring-2 ring-amber-700/30"
         } bg-amber-100/70 shadow-inner`}
         style={{ width: boardSize.w, height: boardSize.h, touchAction: "none" }}
       >
+        {showPreview && (
+          <div
+            className="pointer-events-none absolute inset-0 opacity-30"
+            style={{
+              backgroundImage: `url(${imageSrc})`,
+              backgroundSize: "100% 100%",
+              backgroundRepeat: "no-repeat",
+            }}
+          />
+        )}
         {dragId !== null && hoverIndex !== null && (
           <div
             className="pointer-events-none absolute rounded-md border-2 border-amber-700/60 bg-amber-700/10 transition-[transform] duration-100"
@@ -393,17 +471,54 @@ function Board({
         })}
       </div>
 
-      {solved && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-amber-900/55 backdrop-blur-sm">
-          <div className="rounded-2xl bg-white px-7 py-6 text-center shadow-xl">
-            <div className="text-3xl font-bold text-amber-900">완성! 🎉</div>
-            <div className="mt-2 text-amber-800 text-lg tabular-nums">{formatTime(elapsed)}</div>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={reshuffle}
+          disabled={solved}
+          className="rounded-full bg-white text-amber-900 px-4 py-2 text-sm font-medium shadow-sm border border-amber-200 active:scale-95 transition-transform disabled:opacity-50"
+        >
+          🔀 다시 섞기
+        </button>
+        <button
+          type="button"
+          onClick={useHint}
+          disabled={solved || hintsLeft <= 0}
+          className="rounded-full bg-amber-700 text-white px-4 py-2 text-sm font-semibold shadow-sm active:scale-95 transition-transform disabled:bg-amber-300"
+        >
+          💡 힌트 {hintsLeft}
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowPreview((v) => !v)}
+          className={`rounded-full px-4 py-2 text-sm font-medium shadow-sm active:scale-95 transition-transform border ${
+            showPreview
+              ? "bg-amber-200 text-amber-900 border-amber-300"
+              : "bg-white text-amber-900 border-amber-200"
+          }`}
+        >
+          {showPreview ? "👁 미리보기 ✓" : "👁 미리보기"}
+        </button>
+      </div>
+
+      {showSolveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-amber-900/55 backdrop-blur-sm p-6">
+          <div className="rounded-2xl bg-white px-7 py-6 text-center shadow-xl w-full max-w-xs">
+            <div className="text-3xl font-bold text-amber-900">
+              {isBoss ? "보스 격파! 👑" : "완성! 🎉"}
+            </div>
+            <div className="mt-3 text-amber-800 text-2xl font-semibold tabular-nums">
+              {formatTime(elapsed)}
+            </div>
+            <div className="mt-1 text-xs text-amber-700/70">
+              {hintsUsed === 0 ? "힌트 없이 클리어 ⭐" : `힌트 ${hintsUsed}회 사용`}
+            </div>
             <button
               type="button"
               onClick={onExit}
-              className="mt-5 rounded-full bg-amber-700 px-6 py-3 text-white font-semibold"
+              className="mt-5 w-full rounded-full bg-amber-700 px-6 py-3 text-white font-semibold active:scale-[0.97] transition-transform"
             >
-              다음 스테이지
+              계속
             </button>
           </div>
         </div>
