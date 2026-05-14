@@ -22,6 +22,18 @@ export default function Home() {
     setProgress(loadProgress());
   }, []);
 
+  // Warm the cache for the next stage's photo so "다음" navigates without a
+  // visible network round-trip.
+  useEffect(() => {
+    if (!stage) return;
+    const nextId = stage.id + 1;
+    if (nextId > TOTAL_STAGE_COUNT) return;
+    if (typeof window === "undefined") return;
+    const img = new Image();
+    img.decoding = "async";
+    img.src = getStageImageDataUrl(nextId);
+  }, [stage]);
+
   const par = useMemo(() => (stage ? parTimeMs(stage) : 0), [stage]);
   const hasNext = useMemo(() => {
     if (!stage || !progress) return false;
