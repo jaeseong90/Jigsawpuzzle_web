@@ -11,6 +11,7 @@ import {
 import Confetti from "./Confetti";
 import {
   clearSavedGame,
+  clearSavedGameFor,
   loadGameFor,
   saveGame,
   type SavedGameSnapshot,
@@ -502,8 +503,10 @@ function Board({
   }, [stageId, solved]);
 
   useEffect(() => {
-    if (solved) clearSavedGame();
-  }, [solved]);
+    if (!solved) return;
+    if (stageId != null) clearSavedGameFor(stageId);
+    else clearSavedGame();
+  }, [solved, stageId]);
 
   const pieceW = boardSize.w / cols;
   const pieceH = boardSize.h / rows;
@@ -712,7 +715,7 @@ function Board({
       reshuffleTimerRef.current = null;
     }
     setReshuffleConfirming(false);
-    clearSavedGame();
+    if (stageId != null) clearSavedGameFor(stageId);
     setPieces(buildShuffledPieces(rows, cols, !!rotateMode));
     setStartedAt(Date.now());
     setNow(Date.now());
@@ -728,7 +731,7 @@ function Board({
     setFlowBest(0);
     setSolved(false);
     setShowSolveModal(false);
-  }, [rows, cols, initialHints, initialUndos, rotateMode]);
+  }, [rows, cols, initialHints, initialUndos, rotateMode, stageId]);
 
   const undo = useCallback(() => {
     if (solved || undosLeft <= 0 || history.length === 0 || pausedAt != null) return;
@@ -760,7 +763,7 @@ function Board({
       reshuffleTimerRef.current = null;
     }
     setReshuffleConfirming(false);
-    clearSavedGame();
+    if (stageId != null) clearSavedGameFor(stageId);
     setPieces(buildShuffledPieces(rows, cols, !!rotateMode));
     setStartedAt(Date.now());
     setPausedTotal(0);
@@ -773,7 +776,7 @@ function Board({
     setMoveCount(0);
     setFlowCount(0);
     setFlowBest(0);
-  }, [rows, cols, solved, initialHints, initialUndos, reshuffleConfirming, rotateMode]);
+  }, [rows, cols, solved, initialHints, initialUndos, reshuffleConfirming, rotateMode, stageId]);
 
   const flowActive = flowCount >= 2;
 

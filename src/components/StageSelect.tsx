@@ -9,7 +9,7 @@ import {
   chapterIdForStage,
 } from "@/data/stages";
 import { emptyProgress, loadProgress, type Progress } from "@/lib/progress";
-import { peekSavedStageId } from "@/lib/savedGame";
+import { listSavedGames } from "@/lib/savedGame";
 import { getStageImageDataUrl } from "@/lib/stageImage";
 import { getDailyStageId } from "@/lib/daily";
 import TutorialTip from "./TutorialTip";
@@ -18,6 +18,7 @@ import DailyBanner from "./DailyBanner";
 import LevelChip from "./LevelChip";
 import PhotoGallery from "./PhotoGallery";
 import PersonalPhotoPicker from "./PersonalPhotoPicker";
+import InProgressSheet from "./InProgressSheet";
 
 type Props = {
   progressOverride?: Progress | null;
@@ -36,11 +37,14 @@ export default function StageSelect({
   onPersonal,
 }: Props) {
   const [progress, setProgress] = useState<Progress | null>(progressOverride ?? null);
-  const [resumeStageId, setResumeStageId] = useState<number | null>(null);
+  const [resumeStageIds, setResumeStageIds] = useState<number[]>([]);
   const [dailyStageId, setDailyStageId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [personalOpen, setPersonalOpen] = useState(false);
+  const [inProgressOpen, setInProgressOpen] = useState(false);
+  const resumeStageId = resumeStageIds[0] ?? null;
+  const extraInProgress = Math.max(0, resumeStageIds.length - 1);
   const [toast, setToast] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const toastTimerRef = useRef<number | null>(null);
@@ -62,7 +66,7 @@ export default function StageSelect({
     } else {
       setProgress(loadProgress());
     }
-    setResumeStageId(peekSavedStageId());
+    setResumeStageIds(listSavedGames().map((s) => s.stageId));
     setDailyStageId(getDailyStageId());
   }, [progressOverride]);
 
@@ -101,7 +105,7 @@ export default function StageSelect({
 
   const handleResetProgress = () => {
     setProgress(emptyProgress());
-    setResumeStageId(null);
+    setResumeStageIds([]);
   };
 
   return (
@@ -191,10 +195,14 @@ export default function StageSelect({
       {resumeStageId != null && (
         <ResumeBanner
           stageId={resumeStageId}
+          extra={extraInProgress}
           onResume={() => {
             const stage = STAGES.find((s) => s.id === resumeStageId);
             if (stage) onPlay(stage);
           }}
+          onOpenList={
+            extraInProgress > 0 ? () => setInProgressOpen(true) : undefined
+          }
         />
       )}
 
@@ -335,6 +343,14 @@ export default function StageSelect({
           onPersonal(opts);
         }}
       />
+      <InProgressSheet
+        open={inProgressOpen}
+        onClose={() => setInProgressOpen(false)}
+        onResume={(id) => {
+          const stage = STAGES.find((s) => s.id === id);
+          if (stage) onPlay(stage);
+        }}
+      />
 
       {toast && (
         <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4 pointer-events-none">
@@ -409,35 +425,56 @@ function BrandMark() {
 
 function ResumeBanner({
   stageId,
+  extra,
   onResume,
+  onOpenList,
 }: {
   stageId: number;
+  extra: number;
   onResume: () => void;
+  onOpenList?: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onResume}
-      className="press-95 mt-3 flex items-center justify-between rounded-2xl px-4 py-3 w-full"
-      style={{
-        background: "var(--accent)",
-        color: "var(--accent-fg)",
-      }}
+    <div
+      className="mt-3 flex items-stretch rounded-2xl overflow-hidden"
+      style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
     >
-      <div className="text-left">
-        <div
-          className="text-[10px] tracking-[0.18em] uppercase font-bold opacity-80"
+      <button
+        type="button"
+        onClick={onResume}
+        className="press-95 flex-1 flex items-center justify-between px-4 py-3 text-left"
+      >
+        <div>
+          <div className="text-[10px] tracking-[0.18em] uppercase font-bold opacity-80">
+            Resume
+          </div>
+          <div className="text-base font-semibold">
+            스테이지 {stageId} 이어하기
+          </div>
+        </div>
+        <div className="text-xl" aria-hidden>
+          ▶
+        </div>
+      </button>
+      {onOpenList && extra > 0 && (
+        <button
+          type="button"
+          onClick={onOpenList}
+          aria-label={`다른 진행 ${extra}개 보기`}
+          className="press-95 flex flex-col items-center justify-center px-4"
+          style={{
+            borderLeft: "1px solid rgba(255,255,255,0.25)",
+          }}
         >
-          Resume
-        </div>
-        <div className="text-base font-semibold">
-          스테이지 {stageId} 이어하기
-        </div>
-      </div>
-      <div className="text-xl" aria-hidden>
-        ▶
-      </div>
-    </button>
+          <div className="text-[10px] tracking-[0.18em] font-bold opacity-80">
+            +
+          </div>
+          <div className="text-base font-bold tabular-nums leading-tight">
+            {extra}
+          </div>
+        </button>
+      )}
+    </div>
   );
 }
 
