@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import StageSelect from "@/components/StageSelect";
 import PuzzleBoard from "@/components/PuzzleBoard";
-import PreStageScreen from "@/components/PreStageScreen";
 import {
   TOTAL_STAGE_COUNT,
   type Stage,
@@ -32,11 +31,8 @@ import { xpForClear } from "@/lib/level";
 
 type View =
   | { kind: "menu" }
-  | { kind: "preStage"; stage: Stage }
   | {
       kind: "play";
-      // baseStage is the original (unscaled) stage; activeStage is what we feed
-      // into the board after applying the chosen difficulty.
       baseStage: Stage;
       activeStage: Stage;
       difficulty: Difficulty;
@@ -54,9 +50,8 @@ export default function Home() {
 
   // Warm cache for the upcoming stage photo.
   useEffect(() => {
-    if (view.kind === "menu") return;
-    const stage =
-      view.kind === "preStage" ? view.stage : view.baseStage;
+    if (view.kind !== "play") return;
+    const stage = view.baseStage;
     const nextId = stage.id + 1;
     if (nextId > TOTAL_STAGE_COUNT) return;
     if (typeof window === "undefined") return;
@@ -82,48 +77,23 @@ export default function Home() {
       ?.bestTimeMs;
   }, [view, progress]);
   const isDailyStage = useMemo(() => {
-    if (view.kind === "menu") return false;
-    const stageId =
-      view.kind === "preStage" ? view.stage.id : view.baseStage.id;
-    return getDailyStageId() === stageId;
+    if (view.kind !== "play") return false;
+    return getDailyStageId() === view.baseStage.id;
   }, [view]);
 
-  if (view.kind === "menu") {
-    return (
-      <StageSelect
-        progressOverride={progress}
-        onSelect={(stage) => setView({ kind: "preStage", stage })}
-        onQuickStart={(stage) => {
-          const d = loadDefaultDifficulty();
-          const active = applyDifficulty(stage, d);
-          setView({
-            kind: "play",
-            baseStage: stage,
-            activeStage: active,
-            difficulty: d,
-          });
-        }}
-      />
-    );
-  }
+  const launchStage = (stage: Stage) => {
+    const d = loadDefaultDifficulty();
+    const active = applyDifficulty(stage, d);
+    setView({
+      kind: "play",
+      baseStage: stage,
+      activeStage: active,
+      difficulty: d,
+    });
+  };
 
-  if (view.kind === "preStage") {
-    return (
-      <PreStageScreen
-        stage={view.stage}
-        progress={progress}
-        isDaily={isDailyStage}
-        onStart={(activeStage, difficulty) =>
-          setView({
-            kind: "play",
-            baseStage: view.stage,
-            activeStage,
-            difficulty,
-          })
-        }
-        onCancel={() => setView({ kind: "menu" })}
-      />
-    );
+  if (view.kind === "menu") {
+    return <StageSelect progressOverride={progress} onPlay={launchStage} />;
   }
 
   const { baseStage, activeStage, difficulty } = view;
@@ -189,7 +159,7 @@ export default function Home() {
       setView({ kind: "menu" });
       return;
     }
-    setView({ kind: "preStage", stage });
+    launchStage(stage);
   };
 
   return (

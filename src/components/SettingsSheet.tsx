@@ -5,6 +5,12 @@ import { clearSavedGame } from "@/lib/savedGame";
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound";
 import { loadProgress } from "@/lib/progress";
 import { loadTheme, saveTheme, type Theme } from "@/lib/theme";
+import {
+  DIFFICULTIES,
+  loadDefaultDifficulty,
+  saveDefaultDifficulty,
+  type Difficulty,
+} from "@/lib/difficulty";
 import StatsCard from "./StatsCard";
 import PhotoGallery from "./PhotoGallery";
 import DailyCalendar from "./DailyCalendar";
@@ -17,14 +23,14 @@ async function shareProgress(): Promise<"shared" | "copied" | "noop"> {
   const cleared = Object.keys(progress.cleared).length;
   const stars = Object.values(progress.bestStars).reduce((a, b) => a + b, 0);
   const url = window.location.origin;
-  const text = `직소퍼즐 진행도\n${cleared} 스테이지 클리어 · ★ ${stars}\n${url}`;
+  const text = `TESSERA · 조각의 시간\n${cleared} 스테이지 클리어 · ★ ${stars}\n${url}`;
   try {
     type ShareNav = Navigator & {
       share?: (d: { title?: string; text?: string; url?: string }) => Promise<void>;
     };
     const nav = navigator as ShareNav;
     if (nav.share) {
-      await nav.share({ title: "직소퍼즐", text, url });
+      await nav.share({ title: "Tessera — 조각의 시간", text, url });
       return "shared";
     }
     if (navigator.clipboard?.writeText) {
@@ -47,6 +53,7 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
   const [confirming, setConfirming] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
   const [theme, setTheme] = useState<Theme>("system");
+  const [difficulty, setDifficulty] = useState<Difficulty>("standard");
   const [shareToast, setShareToast] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -56,6 +63,7 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSoundOn(isSoundEnabled());
     setTheme(loadTheme());
+    setDifficulty(loadDefaultDifficulty());
   }, [open]);
 
   if (!open) return null;
@@ -131,6 +139,73 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
               saveTheme(t);
             }} />
           </Row>
+
+          <div
+            className="rounded-xl px-4 py-3"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--line)",
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div
+                  className="text-sm font-semibold"
+                  style={{ color: "var(--ink-1)" }}
+                >
+                  난이도
+                </div>
+                <div
+                  className="text-[11px]"
+                  style={{ color: "var(--ink-mute)" }}
+                >
+                  스테이지 시작 시 적용되는 기본값
+                </div>
+              </div>
+            </div>
+            <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+              {DIFFICULTIES.map((d) => {
+                const selected = difficulty === d.id;
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => {
+                      setDifficulty(d.id);
+                      saveDefaultDifficulty(d.id);
+                    }}
+                    className="press-95 rounded-lg px-2 py-2 text-center"
+                    style={{
+                      background: selected
+                        ? "var(--accent)"
+                        : "var(--bg-surface)",
+                      color: selected
+                        ? "var(--accent-fg)"
+                        : "var(--ink-2)",
+                      border: `1px solid ${
+                        selected ? "var(--accent)" : "var(--line)"
+                      }`,
+                    }}
+                    aria-pressed={selected}
+                  >
+                    <div className="text-[12px] font-semibold leading-tight">
+                      {d.ko}
+                    </div>
+                    <div
+                      className="text-[9px] tracking-[0.14em] mt-0.5"
+                      style={{
+                        color: selected
+                          ? "rgba(255,255,255,0.78)"
+                          : "var(--ink-mute)",
+                      }}
+                    >
+                      ×{d.xpMultiplier.toFixed(1)} XP
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <Row label="소리" hint="스냅 / 완성 효과음">
             <button
@@ -210,10 +285,10 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
         </div>
 
         <div
-          className="mt-5 text-center text-[10px] tracking-[0.18em] uppercase font-semibold"
+          className="mt-5 text-center text-[10px] tracking-[0.28em] font-semibold"
           style={{ color: "var(--ink-mute)" }}
         >
-          끝없는 스테이지 · ∞
+          TESSERA · 끝없는 길
         </div>
         {shareToast && (
           <div

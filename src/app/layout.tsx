@@ -3,16 +3,25 @@ import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
-  title: "직소퍼즐",
-  description: "성인을 위한 미니멀 직소퍼즐 — 매일의 조용한 한 판",
-  applicationName: "직소퍼즐",
+  title: "Tessera — 조각의 시간",
+  description:
+    "성인을 위한 미니멀 직소퍼즐. 조용히 한 조각씩 자리를 찾아가는 시간.",
+  applicationName: "Tessera",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
-    title: "직소퍼즐",
+    statusBarStyle: "black-translucent",
+    title: "Tessera",
+    startupImage: [
+      { url: "/icons/apple-touch.svg" },
+    ],
   },
   icons: {
-    apple: [{ url: "/icons/icon.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/icons/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/icons/apple-touch.svg", type: "image/svg+xml" },
+    ],
   },
   formatDetection: { telephone: false },
 };
@@ -29,8 +38,6 @@ export const viewport: Viewport = {
   ],
 };
 
-// Inline script that resolves the user's theme preference before the first
-// paint. Avoids the dark-mode flash for returning visitors.
 const themeBootScript = `
 (function () {
   try {
@@ -52,9 +59,7 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full antialiased">
       <head>
-        <script
-          dangerouslySetInnerHTML={{ __html: themeBootScript }}
-        />
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       <body className="min-h-full">
         {children}

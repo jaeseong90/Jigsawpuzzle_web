@@ -2,14 +2,15 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "직소퍼즐",
-    short_name: "직소퍼즐",
-    description: "끝없는 스테이지의 모바일 직소퍼즐 — 한 칸씩 자리를 바꿔가며 그림을 완성하세요",
+    name: "Tessera — 조각의 시간",
+    short_name: "Tessera",
+    description:
+      "성인을 위한 미니멀 직소퍼즐. 조용히 한 조각씩 자리를 찾아가는 시간.",
     start_url: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#fdf6ee",
-    theme_color: "#b45309",
+    background_color: "#f6f1ea",
+    theme_color: "#16120e",
     icons: [
       {
         src: "/icons/icon.svg",

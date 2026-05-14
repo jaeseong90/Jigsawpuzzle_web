@@ -20,15 +20,12 @@ import PhotoGallery from "./PhotoGallery";
 
 type Props = {
   progressOverride?: Progress | null;
-  onSelect: (stage: Stage) => void;
-  // Quick-start bypasses the pre-stage screen (used by resume banner).
-  onQuickStart: (stage: Stage) => void;
+  onPlay: (stage: Stage) => void;
 };
 
 export default function StageSelect({
   progressOverride,
-  onSelect,
-  onQuickStart,
+  onPlay,
 }: Props) {
   const [progress, setProgress] = useState<Progress | null>(progressOverride ?? null);
   const [resumeStageId, setResumeStageId] = useState<number | null>(null);
@@ -104,25 +101,28 @@ export default function StageSelect({
       style={{ background: "var(--bg-app)" }}
     >
       <header className="flex items-center justify-between">
-        <div>
-          <div
-            className="text-[11px] tracking-[0.18em] uppercase font-bold"
-            style={{ color: "var(--ink-mute)" }}
-          >
-            Jigsaw · 직소퍼즐
+        <div className="flex items-center gap-3 min-w-0">
+          <BrandMark />
+          <div className="min-w-0">
+            <div
+              className="text-[10px] tracking-[0.32em] font-bold"
+              style={{ color: "var(--ink-mute)" }}
+            >
+              TESSERA
+            </div>
+            <h1
+              className="mt-0.5 text-[20px] font-semibold leading-tight"
+              style={{ color: "var(--ink-1)", letterSpacing: "-0.01em" }}
+            >
+              조각의 시간
+            </h1>
+            <p
+              className="mt-0.5 text-[11px] tabular-nums"
+              style={{ color: "var(--ink-mute)" }}
+            >
+              {clearedCount} 클리어 · ★ {totalStarsEarned}
+            </p>
           </div>
-          <h1
-            className="mt-0.5 text-[26px] font-semibold leading-tight"
-            style={{ color: "var(--ink-1)", letterSpacing: "-0.01em" }}
-          >
-            오늘의 한 판
-          </h1>
-          <p
-            className="mt-0.5 text-xs"
-            style={{ color: "var(--ink-mute)" }}
-          >
-            {clearedCount} 클리어 · ★ {totalStarsEarned}
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -162,14 +162,14 @@ export default function StageSelect({
         <LevelChip progress={progress} />
       </div>
 
-      <DailyBanner onSelect={onSelect} />
+      <DailyBanner onPlay={onPlay} />
 
       {resumeStageId != null && (
         <ResumeBanner
           stageId={resumeStageId}
           onResume={() => {
             const stage = STAGES.find((s) => s.id === resumeStageId);
-            if (stage) onQuickStart(stage);
+            if (stage) onPlay(stage);
           }}
         />
       )}
@@ -270,7 +270,7 @@ export default function StageSelect({
                     isResume={resumeStageId === s.id}
                     isNext={nextStageId === s.id}
                     isDaily={dailyStageId === s.id}
-                    onSelect={onSelect}
+                    onPlay={onPlay}
                     onLockedTap={(stageId) => {
                       const unlockedUpTo = progress?.unlockedUpTo ?? 1;
                       showToast(
@@ -287,10 +287,10 @@ export default function StageSelect({
       </div>
 
       <p
-        className="mt-8 text-center text-[10px] tracking-[0.16em] uppercase font-semibold"
+        className="mt-8 text-center text-[10px] tracking-[0.28em] font-semibold"
         style={{ color: "var(--ink-mute)" }}
       >
-        Endless · 끝없는 길
+        TESSERA · 끝없는 길
       </p>
 
       <TutorialTip />
@@ -334,6 +334,47 @@ export default function StageSelect({
   );
 }
 
+function BrandMark() {
+  // The 2x2 tessera glyph used in icon/manifest, scaled down for the header.
+  return (
+    <span
+      aria-hidden
+      className="flex items-center justify-center rounded-lg"
+      style={{
+        width: 40,
+        height: 40,
+        background: "var(--bg-surface)",
+        border: "1px solid var(--line)",
+      }}
+    >
+      <svg width="22" height="22" viewBox="0 0 64 64">
+        <rect x="10" y="10" width="22" height="22" rx="3" fill="var(--accent)" />
+        <rect
+          x="34"
+          y="10"
+          width="22"
+          height="22"
+          rx="3"
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth="2.2"
+        />
+        <rect
+          x="10"
+          y="34"
+          width="22"
+          height="22"
+          rx="3"
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth="2.2"
+        />
+        <rect x="34" y="34" width="22" height="22" rx="3" fill="var(--accent)" />
+      </svg>
+    </span>
+  );
+}
+
 function ResumeBanner({
   stageId,
   onResume,
@@ -374,7 +415,7 @@ function StageCard({
   isResume,
   isNext,
   isDaily,
-  onSelect,
+  onPlay,
   onLockedTap,
 }: {
   stage: Stage;
@@ -382,7 +423,7 @@ function StageCard({
   isResume: boolean;
   isNext: boolean;
   isDaily: boolean;
-  onSelect: (s: Stage) => void;
+  onPlay: (s: Stage) => void;
   onLockedTap: (stageId: number) => void;
 }) {
   const unlocked = progress ? stage.id <= progress.unlockedUpTo : stage.id === 1;
@@ -397,7 +438,7 @@ function StageCard({
   return (
     <button
       type="button"
-      onClick={() => (unlocked ? onSelect(stage) : onLockedTap(stage.id))}
+      onClick={() => (unlocked ? onPlay(stage) : onLockedTap(stage.id))}
       className="press-95 relative aspect-square rounded-xl overflow-hidden text-left"
       style={{
         background: "var(--bg-elevated)",

@@ -7,10 +7,10 @@ import { getStage, type Stage } from "@/data/stages";
 import DailyCalendar from "./DailyCalendar";
 
 type Props = {
-  onSelect: (stage: Stage) => void;
+  onPlay: (stage: Stage) => void;
 };
 
-export default function DailyBanner({ onSelect }: Props) {
+export default function DailyBanner({ onPlay }: Props) {
   const [record, setRecord] = useState<DailyRecord | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
 
@@ -47,7 +47,7 @@ export default function DailyBanner({ onSelect }: Props) {
           </div>
           <button
             type="button"
-            onClick={() => onSelect(stage)}
+            onClick={() => onPlay(stage)}
             className="press-95 flex flex-1 items-center justify-between px-3 py-3 text-left"
             style={{ color: "var(--ink-1)" }}
           >
