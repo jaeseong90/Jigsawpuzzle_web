@@ -90,6 +90,17 @@ export default function StageSelect({ onPlay }: Props) {
         </div>
       </header>
 
+      {progress && clearedCount >= TOTAL_STAGE_COUNT && (
+        <div className="mt-4 rounded-2xl bg-gradient-to-r from-amber-400 via-rose-400 to-amber-400 text-white px-5 py-4 text-center shadow-md">
+          <div className="text-base font-bold">🏆 100 스테이지 모두 클리어!</div>
+          <div className="text-xs opacity-90 mt-0.5 tabular-nums">
+            획득한 별 {Object.values(progress.bestStars).reduce((a, b) => a + b, 0)} /
+            {" "}
+            {TOTAL_STAGE_COUNT * 3}
+          </div>
+        </div>
+      )}
+
       <DailyBanner onPlay={onPlay} />
 
       <AchievementsRow progress={progress} />
@@ -112,6 +123,14 @@ export default function StageSelect({ onPlay }: Props) {
           const clearedInChapter = progress
             ? stagesInChapter.filter((s) => progress.cleared[s.id]).length
             : 0;
+          const starsInChapter = progress
+            ? stagesInChapter.reduce(
+                (sum, s) => sum + (progress.bestStars[s.id] ?? 0),
+                0
+              )
+            : 0;
+          const chapterFullyCleared =
+            clearedInChapter === stagesInChapter.length;
           return (
             <section
               key={ch.id}
@@ -124,6 +143,7 @@ export default function StageSelect({ onPlay }: Props) {
                 <div>
                   <div className="text-[11px] font-bold tracking-wide text-amber-700/80 uppercase">
                     Chapter {ch.id}
+                    {chapterFullyCleared && " ✓"}
                   </div>
                   <div className="text-lg font-bold text-amber-900 leading-tight">
                     {ch.title}
@@ -132,8 +152,13 @@ export default function StageSelect({ onPlay }: Props) {
                     {ch.subtitle}
                   </div>
                 </div>
-                <div className="text-[11px] font-semibold tabular-nums text-amber-700/80">
-                  {clearedInChapter} / {stagesInChapter.length}
+                <div className="text-right">
+                  <div className="text-[11px] font-semibold tabular-nums text-amber-700/80">
+                    {clearedInChapter} / {stagesInChapter.length}
+                  </div>
+                  <div className="text-[11px] font-semibold tabular-nums text-amber-700/60">
+                    ★ {starsInChapter} / {stagesInChapter.length * 3}
+                  </div>
                 </div>
               </header>
               <div className="grid grid-cols-3 gap-3">
