@@ -29,8 +29,13 @@ export function getStageImageDataUrl(stageId: number): string {
 export function getStageImageUrl(stageId: number, size: number = SIZE): string {
   const isBoss = stageId % 10 === 0;
   if (isBoss) {
-    const idx = Math.max(0, Math.floor(stageId / 10) - 1) % BOSS_IMAGE_IDS.length;
-    return `https://picsum.photos/id/${BOSS_IMAGE_IDS[idx]}/${size}/${size}`;
+    const bossIndex = Math.max(0, Math.floor(stageId / 10) - 1);
+    // First N bosses use hand-curated Picsum IDs; the rest fall back to seeded
+    // random photos with a "boss" prefix so they still differ from normal seeds.
+    if (bossIndex < BOSS_IMAGE_IDS.length) {
+      return `https://picsum.photos/id/${BOSS_IMAGE_IDS[bossIndex]}/${size}/${size}`;
+    }
+    return `https://picsum.photos/seed/boss-${stageId}/${size}/${size}`;
   }
   return `https://picsum.photos/seed/jigsaw-${stageId}/${size}/${size}`;
 }
