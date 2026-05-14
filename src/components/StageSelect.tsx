@@ -123,7 +123,7 @@ export default function StageSelect({ onPlay }: Props) {
               ref={(el) => {
                 chapterRefs.current.set(ch.id, el);
               }}
-              className="scroll-mt-3"
+              className="scroll-mt-3 chapter-section"
             >
               <header className="flex items-end justify-between mb-2 px-0.5">
                 <div>

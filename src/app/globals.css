@@ -73,6 +73,12 @@ body {
   animation-fill-mode: forwards;
 }
 
+/* Skip painting off-screen chapter sections so the 999-stage grid stays cheap. */
+.chapter-section {
+  content-visibility: auto;
+  contain-intrinsic-size: 100% 480px;
+}
+
 @keyframes solve-sheet-up {
   0% {
     transform: translateY(40px);
