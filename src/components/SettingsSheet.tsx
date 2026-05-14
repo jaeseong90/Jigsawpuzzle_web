@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { clearSavedGame } from "@/lib/savedGame";
+import { isSoundEnabled, setSoundEnabled } from "@/lib/sound";
 
 type Props = {
   open: boolean;
@@ -11,6 +12,13 @@ type Props = {
 
 export default function SettingsSheet({ open, onClose, onResetProgress }: Props) {
   const [confirming, setConfirming] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
+
+  useEffect(() => {
+    if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSoundOn(isSoundEnabled());
+  }, [open]);
 
   if (!open) return null;
 
@@ -51,6 +59,31 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
         </div>
 
         <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
+            <div>
+              <div className="text-sm font-semibold text-amber-900">소리</div>
+              <div className="text-[11px] text-amber-700/70">스냅 / 완성 효과음</div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={soundOn}
+              onClick={() => {
+                const next = !soundOn;
+                setSoundOn(next);
+                setSoundEnabled(next);
+              }}
+              className={`relative h-7 w-12 rounded-full transition-colors ${
+                soundOn ? "bg-amber-700" : "bg-amber-200"
+              }`}
+            >
+              <span
+                className="absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all"
+                style={{ left: soundOn ? "calc(100% - 1.625rem)" : "0.125rem" }}
+              />
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={handleReset}

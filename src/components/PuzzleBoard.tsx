@@ -15,6 +15,7 @@ import {
   saveGame,
   type SavedGameSnapshot,
 } from "@/lib/savedGame";
+import { playSnap, playSolve } from "@/lib/sound";
 
 type Piece = {
   // Stable identity. id encodes the piece's original (row, col) for clarity.
@@ -451,14 +452,18 @@ function Board({
           const stars = computeStars(duration, parTimeMs);
           setSolved(true);
           onSolved?.(duration, stars, hintsUsed);
+          playSolve();
           if (typeof navigator !== "undefined" && navigator.vibrate) {
             navigator.vibrate([20, 40, 80]);
           }
         } else {
           const before = countJoinedEdges(prev, rows, cols);
           const after = countJoinedEdges(next, rows, cols);
-          if (after > before && typeof navigator !== "undefined" && navigator.vibrate) {
-            navigator.vibrate(15);
+          if (after > before) {
+            playSnap();
+            if (typeof navigator !== "undefined" && navigator.vibrate) {
+              navigator.vibrate(15);
+            }
           }
         }
         return next;
