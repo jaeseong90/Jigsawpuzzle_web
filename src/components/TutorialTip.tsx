@@ -60,8 +60,9 @@ export default function TutorialTip() {
             <b style={{ color: "var(--ink-1)" }}>일시정지</b>.
           </li>
           <li>
-            난이도는 시작 전에 <b style={{ color: "var(--ink-1)" }}>릴랙스 /
-            스탠다드 / 마스터</b>로 고를 수 있어요.
+            난이도는 <b style={{ color: "var(--ink-1)" }}>설정</b>에서 정해요.
+            마스터에서는 조각이 회전된 채 시작 — 회전된 조각을{" "}
+            <b style={{ color: "var(--ink-1)" }}>탭</b>하면 90°씩 돌아가요.
           </li>
         </ul>
         <button

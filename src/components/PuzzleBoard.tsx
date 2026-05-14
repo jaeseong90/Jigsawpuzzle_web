@@ -19,11 +19,15 @@ import { playSnap, playSolve } from "@/lib/sound";
 import type { Difficulty } from "@/lib/difficulty";
 import { getDifficultyMeta } from "@/lib/difficulty";
 
+type Rotation = 0 | 1 | 2 | 3;
+
 type Piece = {
   id: number;
   origRow: number;
   origCol: number;
   currentIndex: number;
+  // 0..3 representing 0°/90°/180°/270° clockwise. Only nonzero in Master mode.
+  rotation: Rotation;
 };
 
 type Joined = { top: boolean; right: boolean; bottom: boolean; left: boolean };
@@ -106,7 +110,7 @@ export default function PuzzleBoard(props: Props) {
       >
         {boardSize ? (
           <Board
-            key={`${boardSize.w}x${boardSize.h}-${rows}x${cols}-${imageSrc.length}`}
+            key={`${boardSize.w}x${boardSize.h}-${rows}x${cols}-${imageSrc.length}-${props.difficulty ?? "standard"}`}
             imageSrc={imageSrc}
             rows={rows}
             cols={cols}
@@ -117,6 +121,7 @@ export default function PuzzleBoard(props: Props) {
             previousBestMs={props.previousBestMs}
             isDaily={props.isDaily}
             difficulty={props.difficulty}
+            rotateMode={props.difficulty === "master"}
             onSolved={props.onSolved}
             onExit={props.onExit}
             onNext={props.onNext}
@@ -196,6 +201,7 @@ type BoardProps = {
   previousBestMs?: number;
   isDaily?: boolean;
   difficulty?: Difficulty;
+  rotateMode?: boolean;
   onSolved?: (durationMs: number, stars: number, hintsUsed: number) => void;
   onExit?: () => void;
   onNext?: () => void;
@@ -213,7 +219,8 @@ function initialBoardState(
   stageId: number | undefined,
   rows: number,
   cols: number,
-  initialHints: number
+  initialHints: number,
+  rotateMode: boolean
 ): InitialBoardState {
   if (stageId != null) {
     const saved: SavedGameSnapshot | null = loadGameFor(stageId);
@@ -224,6 +231,7 @@ function initialBoardState(
           origRow: p.origRow,
           origCol: p.origCol,
           currentIndex: p.currentIndex,
+          rotation: ((p.rotation ?? 0) % 4) as Rotation,
         })),
         elapsedMs: saved.elapsedMs,
         hintsLeft: saved.hintsLeft,
@@ -232,7 +240,7 @@ function initialBoardState(
     }
   }
   return {
-    pieces: buildShuffledPieces(rows, cols),
+    pieces: buildShuffledPieces(rows, cols, rotateMode),
     elapsedMs: 0,
     hintsLeft: initialHints,
     hintsUsed: 0,
@@ -246,12 +254,22 @@ function computeStars(durationMs: number, parMs: number | undefined): 1 | 2 | 3 
   return 1;
 }
 
-function buildShuffledPieces(rows: number, cols: number): Piece[] {
+function buildShuffledPieces(
+  rows: number,
+  cols: number,
+  rotateMode: boolean = false
+): Piece[] {
   const total = rows * cols;
   const pieces: Piece[] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      pieces.push({ id: r * cols + c, origRow: r, origCol: c, currentIndex: 0 });
+      pieces.push({
+        id: r * cols + c,
+        origRow: r,
+        origCol: c,
+        currentIndex: 0,
+        rotation: 0,
+      });
     }
   }
   const indices = Array.from({ length: total }, (_, i) => i);
@@ -271,6 +289,10 @@ function buildShuffledPieces(rows: number, cols: number): Piece[] {
   }
   pieces.forEach((p, i) => {
     p.currentIndex = indices[i];
+    if (rotateMode) {
+      // Random nonzero rotation so every piece starts misaligned.
+      p.rotation = (1 + Math.floor(Math.random() * 3)) as Rotation;
+    }
   });
   return pieces;
 }
@@ -295,6 +317,7 @@ function Board({
   previousBestMs,
   isDaily,
   difficulty,
+  rotateMode,
   onSolved,
   onExit,
   onNext,
@@ -304,7 +327,7 @@ function Board({
 
   const initialHints = isBoss ? 2 : 3;
   const [initial] = useState<InitialBoardState>(() =>
-    initialBoardState(stageId, rows, cols, initialHints)
+    initialBoardState(stageId, rows, cols, initialHints, !!rotateMode)
   );
 
   const [pieces, setPieces] = useState<Piece[]>(initial.pieces);
@@ -401,6 +424,7 @@ function Board({
         origRow: p.origRow,
         origCol: p.origCol,
         currentIndex: p.currentIndex,
+        rotation: p.rotation,
       })),
       elapsedMs,
       hintsLeft,
@@ -439,6 +463,7 @@ function Board({
           origRow: p.origRow,
           origCol: p.origCol,
           currentIndex: p.currentIndex,
+          rotation: p.rotation,
         })),
         elapsedMs,
         hintsLeft: s.hintsLeft,
@@ -461,6 +486,7 @@ function Board({
           origRow: p.origRow,
           origCol: p.origCol,
           currentIndex: p.currentIndex,
+          rotation: p.rotation,
         })),
         elapsedMs,
         hintsLeft: s.hintsLeft,
@@ -552,11 +578,36 @@ function Board({
       const delta = dragDelta;
       const rDeltaCol = Math.round(delta.x / pieceW);
       const rDeltaRow = Math.round(delta.y / pieceH);
+      const headId = dragHeadId;
+      const groupSize = dragGroup.size;
+      const totalMove = Math.abs(delta.x) + Math.abs(delta.y);
 
       setDragGroup(null);
       setDragHeadId(null);
       setDragDelta({ x: 0, y: 0 });
       setHoverDelta(null);
+
+      // Tap (no meaningful drag) on a single rotated/rotatable piece in Master
+      // mode → rotate 90° clockwise. We require single-piece group so a tap on
+      // a joined cluster never accidentally breaks it.
+      if (
+        rotateMode &&
+        totalMove < 6 &&
+        groupSize === 1 &&
+        headId != null
+      ) {
+        setPieces((prev) =>
+          prev.map((p) =>
+            p.id === headId
+              ? { ...p, rotation: (((p.rotation + 1) % 4) as Rotation) }
+              : p
+          )
+        );
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          navigator.vibrate(8);
+        }
+        return;
+      }
 
       if (rDeltaCol === 0 && rDeltaRow === 0) return;
 
@@ -567,7 +618,10 @@ function Board({
         setHistory((h) => [...h.slice(-9), prev]);
         setMoveCount((n) => n + 1);
 
-        const isSolved = next.every((p) => p.currentIndex === p.origRow * cols + p.origCol);
+        const isSolved = next.every(
+          (p) =>
+            p.currentIndex === p.origRow * cols + p.origCol && p.rotation === 0
+        );
         if (isSolved && !solved) {
           const duration = Math.max(0, Date.now() - startedAt - pausedTotal);
           const stars = computeStars(duration, parTimeMs);
@@ -593,6 +647,7 @@ function Board({
     },
     [
       dragGroup,
+      dragHeadId,
       dragDelta,
       pieceW,
       pieceH,
@@ -605,12 +660,17 @@ function Board({
       hintsUsed,
       onSolved,
       bumpFlow,
+      rotateMode,
     ]
   );
 
   const totalPieces = rows * cols;
   const correctCount = useMemo(
-    () => pieces.filter((p) => p.currentIndex === p.origRow * cols + p.origCol).length,
+    () =>
+      pieces.filter(
+        (p) =>
+          p.currentIndex === p.origRow * cols + p.origCol && p.rotation === 0
+      ).length,
     [pieces, cols]
   );
   const effectiveStop = pausedAt ?? now;
@@ -620,7 +680,8 @@ function Board({
     if (solved || hintsLeft <= 0 || pausedAt != null) return;
     setPieces((prev) => {
       const wrong = prev.filter(
-        (p) => p.currentIndex !== p.origRow * cols + p.origCol
+        (p) =>
+          p.currentIndex !== p.origRow * cols + p.origCol || p.rotation !== 0
       );
       if (wrong.length === 0) return prev;
       const target = wrong[Math.floor(Math.random() * wrong.length)];
@@ -630,7 +691,8 @@ function Board({
       setHistory((h) => [...h.slice(-9), prev]);
       setMoveCount((n) => n + 1);
       return prev.map((p) => {
-        if (p.id === target.id) return { ...p, currentIndex: home };
+        if (p.id === target.id)
+          return { ...p, currentIndex: home, rotation: 0 as Rotation };
         if (p.id === occ.id) return { ...p, currentIndex: target.currentIndex };
         return p;
       });
@@ -647,7 +709,7 @@ function Board({
     }
     setReshuffleConfirming(false);
     clearSavedGame();
-    setPieces(buildShuffledPieces(rows, cols));
+    setPieces(buildShuffledPieces(rows, cols, !!rotateMode));
     setStartedAt(Date.now());
     setNow(Date.now());
     setPausedTotal(0);
@@ -662,7 +724,7 @@ function Board({
     setFlowBest(0);
     setSolved(false);
     setShowSolveModal(false);
-  }, [rows, cols, initialHints, initialUndos]);
+  }, [rows, cols, initialHints, initialUndos, rotateMode]);
 
   const undo = useCallback(() => {
     if (solved || undosLeft <= 0 || history.length === 0 || pausedAt != null) return;
@@ -695,7 +757,7 @@ function Board({
     }
     setReshuffleConfirming(false);
     clearSavedGame();
-    setPieces(buildShuffledPieces(rows, cols));
+    setPieces(buildShuffledPieces(rows, cols, !!rotateMode));
     setStartedAt(Date.now());
     setPausedTotal(0);
     setPausedAt(null);
@@ -707,7 +769,7 @@ function Board({
     setMoveCount(0);
     setFlowCount(0);
     setFlowBest(0);
-  }, [rows, cols, solved, initialHints, initialUndos, reshuffleConfirming]);
+  }, [rows, cols, solved, initialHints, initialUndos, reshuffleConfirming, rotateMode]);
 
   const flowActive = flowCount >= 2;
 
@@ -822,8 +884,11 @@ function Board({
           const x = inGroup ? baseX + dragDelta.x : baseX;
           const y = inGroup ? baseY + dragDelta.y : baseY;
           const j = joined[p.id] ?? { top: false, right: false, bottom: false, left: false };
-          const inCorrect = p.currentIndex === p.origRow * cols + p.origCol;
+          const inCorrect =
+            p.currentIndex === p.origRow * cols + p.origCol &&
+            p.rotation === 0;
           const edgeMark = edgeHighlight && isEdgePiece(p, rows, cols);
+          const rotated = p.rotation !== 0;
           return (
             <div
               key={p.id}
@@ -831,7 +896,10 @@ function Board({
               style={{
                 width: pieceW,
                 height: pieceH,
-                transform: `translate3d(${x}px, ${y}px, 0) ${inGroup ? "scale(1.02)" : ""}`,
+                transform: `translate3d(${x}px, ${y}px, 0) rotate(${p.rotation * 90}deg) ${
+                  inGroup ? "scale(1.02)" : ""
+                }`,
+                transformOrigin: "center",
                 zIndex: inGroup ? 100 + (isHead ? 1 : 0) : inCorrect ? 1 : 2,
                 backgroundImage: `url(${imageSrc})`,
                 backgroundSize: `${boardSize.w}px ${boardSize.h}px`,
@@ -839,12 +907,14 @@ function Board({
                 opacity: dragGroup && !inGroup ? 0.78 : 1,
                 transition: inGroup
                   ? "none"
-                  : "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms",
+                  : "transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms",
                 boxShadow: inGroup ? "0 10px 24px rgba(0,0,0,0.32)" : "none",
                 outline: isHead
                   ? "2px solid var(--accent)"
                   : edgeMark
                   ? "2px solid rgba(212,160,92,0.85)"
+                  : rotated
+                  ? "1.5px dashed rgba(212,160,92,0.55)"
                   : "none",
                 outlineOffset: -2,
                 borderTop: j.top ? "0" : "1px solid rgba(255,255,255,0.45)",
@@ -1257,19 +1327,31 @@ function computeJoined(pieces: Piece[], rows: number, cols: number): Record<numb
   }
 
   for (const p of pieces) {
+    // Rotated pieces never join — they must be straightened first.
+    if (p.rotation !== 0) continue;
     const ci = p.currentIndex;
     const cr = Math.floor(ci / cols);
     const cc = ci % cols;
     if (cc < cols - 1) {
       const right = byIndex.get(ci + 1);
-      if (right && right.origRow === p.origRow && right.origCol === p.origCol + 1) {
+      if (
+        right &&
+        right.rotation === 0 &&
+        right.origRow === p.origRow &&
+        right.origCol === p.origCol + 1
+      ) {
         out[p.id].right = true;
         out[right.id].left = true;
       }
     }
     if (cr < rows - 1) {
       const below = byIndex.get(ci + cols);
-      if (below && below.origCol === p.origCol && below.origRow === p.origRow + 1) {
+      if (
+        below &&
+        below.rotation === 0 &&
+        below.origCol === p.origCol &&
+        below.origRow === p.origRow + 1
+      ) {
         out[p.id].bottom = true;
         out[below.id].top = true;
       }

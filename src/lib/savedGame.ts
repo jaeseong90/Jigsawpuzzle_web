@@ -7,6 +7,8 @@ export type SavedGameSnapshot = {
     origRow: number;
     origCol: number;
     currentIndex: number;
+    // 0..3 = 0°/90°/180°/270° clockwise rotation. Absent in pre-v2 snapshots.
+    rotation?: number;
   }>;
   elapsedMs: number;
   hintsLeft: number;
