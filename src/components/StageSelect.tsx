@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { STAGES, type Stage, TOTAL_STAGE_COUNT } from "@/data/stages";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  CHAPTERS,
+  STAGES,
+  type Stage,
+  TOTAL_STAGE_COUNT,
+  chapterIdForStage,
+} from "@/data/stages";
 import { emptyProgress, loadProgress, type Progress } from "@/lib/progress";
 import { peekSavedStageId } from "@/lib/savedGame";
 import { getStageImageDataUrl } from "@/lib/stageImage";
@@ -16,6 +22,7 @@ export default function StageSelect({ onPlay }: Props) {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [resumeStageId, setResumeStageId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const chapterRefs = useRef<Map<number, HTMLElement | null>>(new Map());
 
   useEffect(() => {
     // Hydrate stage-select state from localStorage on mount (client-only).
@@ -23,6 +30,15 @@ export default function StageSelect({ onPlay }: Props) {
     setProgress(loadProgress());
     setResumeStageId(peekSavedStageId());
   }, []);
+
+  // Once we know progress, scroll to the chapter holding the latest unlocked stage.
+  useEffect(() => {
+    if (!progress) return;
+    const target = resumeStageId ?? progress.unlockedUpTo;
+    const chId = chapterIdForStage(target);
+    const el = chapterRefs.current.get(chId);
+    if (el) el.scrollIntoView({ block: "start", behavior: "auto" });
+  }, [progress, resumeStageId]);
 
   const clearedCount = useMemo(() => {
     if (!progress) return 0;
@@ -68,16 +84,52 @@ export default function StageSelect({ onPlay }: Props) {
         />
       )}
 
-      <div className="mt-5 grid grid-cols-3 gap-3">
-        {STAGES.map((s) => (
-          <StageCard
-            key={s.id}
-            stage={s}
-            progress={progress}
-            isResume={resumeStageId === s.id}
-            onPlay={onPlay}
-          />
-        ))}
+      <div className="mt-5 space-y-6">
+        {CHAPTERS.map((ch) => {
+          const stagesInChapter = STAGES.filter(
+            (s) => s.id >= ch.range[0] && s.id <= ch.range[1]
+          );
+          const clearedInChapter = progress
+            ? stagesInChapter.filter((s) => progress.cleared[s.id]).length
+            : 0;
+          return (
+            <section
+              key={ch.id}
+              ref={(el) => {
+                chapterRefs.current.set(ch.id, el);
+              }}
+              className="scroll-mt-3"
+            >
+              <header className="flex items-end justify-between mb-2 px-0.5">
+                <div>
+                  <div className="text-[11px] font-bold tracking-wide text-amber-700/80 uppercase">
+                    Chapter {ch.id}
+                  </div>
+                  <div className="text-lg font-bold text-amber-900 leading-tight">
+                    {ch.title}
+                  </div>
+                  <div className="text-[11px] text-amber-800/70">
+                    {ch.subtitle}
+                  </div>
+                </div>
+                <div className="text-[11px] font-semibold tabular-nums text-amber-700/80">
+                  {clearedInChapter} / {stagesInChapter.length}
+                </div>
+              </header>
+              <div className="grid grid-cols-3 gap-3">
+                {stagesInChapter.map((s) => (
+                  <StageCard
+                    key={s.id}
+                    stage={s}
+                    progress={progress}
+                    isResume={resumeStageId === s.id}
+                    onPlay={onPlay}
+                  />
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
 
       <p className="mt-8 text-center text-[11px] text-amber-700/70">
