@@ -10,7 +10,7 @@ import {
 } from "@/data/stages";
 import { emptyProgress, loadProgress, type Progress } from "@/lib/progress";
 import { peekSavedStageId } from "@/lib/savedGame";
-import { getStageImageDataUrl } from "@/lib/stageImage";
+import { getStageImageDataUrl, getStagePalette } from "@/lib/stageImage";
 import TutorialTip from "./TutorialTip";
 import SettingsSheet from "./SettingsSheet";
 import AchievementsRow from "./AchievementsRow";
@@ -188,8 +188,10 @@ function StageCard({
   const cleared = progress ? !!progress.cleared[stage.id] : false;
   const best = progress?.bestTimes[stage.id];
   const stars = progress?.bestStars[stage.id] ?? 0;
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   const img = getStageImageDataUrl(stage.id);
+  const palette = getStagePalette(stage.id);
 
   return (
     <button
@@ -207,9 +209,19 @@ function StageCard({
       <div
         className="absolute inset-0"
         style={{
-          backgroundImage: `url(${img})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
+          background: `linear-gradient(135deg, ${palette[1]} 0%, ${palette[2]} 100%)`,
+        }}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element -- cross-origin picsum URLs aren't friendly to next/image without remote patterns */}
+      <img
+        src={img}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setImgLoaded(true)}
+        className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
+        style={{
+          opacity: imgLoaded ? 1 : 0,
           filter: unlocked ? "none" : "grayscale(80%) brightness(0.75)",
         }}
       />
