@@ -335,7 +335,8 @@ function Board({
   // exactly where the player left off.
   useEffect(() => {
     if (stageId == null || solved) return;
-    const elapsedMs = Math.max(0, Date.now() - startedAt - pausedTotal);
+    const effectiveStop = pausedAt ?? Date.now();
+    const elapsedMs = Math.max(0, effectiveStop - startedAt - pausedTotal);
     saveGame({
       stageId,
       pieces: pieces.map((p) => ({
@@ -348,29 +349,73 @@ function Board({
       hintsLeft,
       hintsUsed,
     });
-  }, [pieces, hintsLeft, hintsUsed, startedAt, pausedTotal, stageId, solved]);
+  }, [pieces, hintsLeft, hintsUsed, startedAt, pausedTotal, pausedAt, stageId, solved]);
 
-  // Also persist on tab hide so the snapshot survives mobile suspensions.
+  // Periodic snapshot so a long idle-then-crash still preserves the timer.
+  // We read state from refs to avoid recreating the interval on every change.
+  const snapshotStateRef = useRef({
+    pieces,
+    hintsLeft,
+    hintsUsed,
+    startedAt,
+    pausedTotal,
+    pausedAt,
+  });
   useEffect(() => {
-    const onVis = () => {
-      if (!document.hidden || stageId == null || solved) return;
-      const elapsedMs = Math.max(0, Date.now() - startedAt - pausedTotal);
+    snapshotStateRef.current = {
+      pieces,
+      hintsLeft,
+      hintsUsed,
+      startedAt,
+      pausedTotal,
+      pausedAt,
+    };
+  });
+  useEffect(() => {
+    if (stageId == null || solved) return;
+    const id = window.setInterval(() => {
+      const s = snapshotStateRef.current;
+      const effectiveStop = s.pausedAt ?? Date.now();
+      const elapsedMs = Math.max(0, effectiveStop - s.startedAt - s.pausedTotal);
       saveGame({
         stageId,
-        pieces: pieces.map((p) => ({
+        pieces: s.pieces.map((p) => ({
           id: p.id,
           origRow: p.origRow,
           origCol: p.origCol,
           currentIndex: p.currentIndex,
         })),
         elapsedMs,
-        hintsLeft,
-        hintsUsed,
+        hintsLeft: s.hintsLeft,
+        hintsUsed: s.hintsUsed,
+      });
+    }, 10000);
+    return () => window.clearInterval(id);
+  }, [stageId, solved]);
+
+  // Also persist on tab hide so the snapshot survives mobile suspensions.
+  useEffect(() => {
+    const onVis = () => {
+      if (!document.hidden || stageId == null || solved) return;
+      const s = snapshotStateRef.current;
+      const effectiveStop = s.pausedAt ?? Date.now();
+      const elapsedMs = Math.max(0, effectiveStop - s.startedAt - s.pausedTotal);
+      saveGame({
+        stageId,
+        pieces: s.pieces.map((p) => ({
+          id: p.id,
+          origRow: p.origRow,
+          origCol: p.origCol,
+          currentIndex: p.currentIndex,
+        })),
+        elapsedMs,
+        hintsLeft: s.hintsLeft,
+        hintsUsed: s.hintsUsed,
       });
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, [stageId, pieces, hintsLeft, hintsUsed, startedAt, pausedTotal, solved]);
+  }, [stageId, solved]);
 
   // Once solved, drop the snapshot so the next entry is a fresh shuffle.
   useEffect(() => {
