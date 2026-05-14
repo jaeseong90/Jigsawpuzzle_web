@@ -3,9 +3,34 @@
 import { useEffect, useState } from "react";
 import { clearSavedGame } from "@/lib/savedGame";
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound";
+import { loadProgress } from "@/lib/progress";
 import StatsCard from "./StatsCard";
 
 const TUTORIAL_SEEN_KEY = "jigsaw:tutorial-seen";
+
+async function shareProgress(): Promise<"shared" | "copied" | "noop"> {
+  if (typeof window === "undefined") return "noop";
+  const progress = loadProgress();
+  const cleared = Object.keys(progress.cleared).length;
+  const stars = Object.values(progress.bestStars).reduce((a, b) => a + b, 0);
+  const url = window.location.origin;
+  const text = `직소퍼즐 진행도\n${cleared} 스테이지 클리어 · ★ ${stars}\n${url}`;
+  try {
+    type ShareNav = Navigator & { share?: (d: { title?: string; text?: string; url?: string }) => Promise<void> };
+    const nav = navigator as ShareNav;
+    if (nav.share) {
+      await nav.share({ title: "직소퍼즐", text, url });
+      return "shared";
+    }
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return "copied";
+    }
+  } catch {
+    /* user cancelled or unsupported */
+  }
+  return "noop";
+}
 
 type Props = {
   open: boolean;
@@ -16,6 +41,7 @@ type Props = {
 export default function SettingsSheet({ open, onClose, onResetProgress }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
+  const [shareToast, setShareToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -91,6 +117,20 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
 
           <button
             type="button"
+            onClick={async () => {
+              const result = await shareProgress();
+              if (result === "shared") setShareToast(null);
+              else if (result === "copied") setShareToast("진행도가 복사됐어요");
+              else setShareToast("공유를 지원하지 않는 환경이에요");
+              setTimeout(() => setShareToast(null), 1800);
+            }}
+            className="w-full rounded-xl bg-amber-50 text-amber-900 border border-amber-200 px-4 py-3 text-sm font-semibold text-left"
+          >
+            📋 진행도 공유
+          </button>
+
+          <button
+            type="button"
             onClick={() => {
               try {
                 localStorage.removeItem(TUTORIAL_SEEN_KEY);
@@ -127,6 +167,11 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
         <div className="mt-5 text-center text-[11px] text-amber-700/60">
           직소퍼즐 PWA · 끝없는 스테이지 ∞
         </div>
+        {shareToast && (
+          <div className="mt-2 text-center text-xs text-amber-800/80">
+            {shareToast}
+          </div>
+        )}
       </div>
     </div>
   );
