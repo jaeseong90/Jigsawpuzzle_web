@@ -1016,7 +1016,7 @@ function Board({
               backgroundImage: `url(${imageSrc})`,
               backgroundSize: "100% 100%",
               backgroundRepeat: "no-repeat",
-              opacity: 0.42,
+              opacity: 0.92,
               zIndex: 50,
             }}
           />
