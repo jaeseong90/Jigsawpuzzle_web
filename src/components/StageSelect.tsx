@@ -596,9 +596,29 @@ function ChapterBlock({
         <div
           className="flex-none flex items-center justify-center w-12 h-12 rounded-xl font-bold tabular-nums"
           style={{
-            background: isOpen ? accent : "var(--bg-elevated)",
-            color: isOpen ? "var(--accent-fg)" : "var(--ink-2)",
-            border: `1px solid ${isOpen ? accent : "var(--line)"}`,
+            background: isOpen
+              ? accent
+              : mastered
+              ? "var(--gold-soft)"
+              : fullyCleared
+              ? "var(--success-soft)"
+              : "var(--bg-elevated)",
+            color: isOpen
+              ? "var(--accent-fg)"
+              : mastered
+              ? "var(--gold)"
+              : fullyCleared
+              ? "var(--success)"
+              : "var(--ink-2)",
+            border: `1px solid ${
+              isOpen
+                ? accent
+                : mastered
+                ? "var(--gold)"
+                : fullyCleared
+                ? "var(--success)"
+                : "var(--line)"
+            }`,
             fontSize: 14,
           }}
         >
