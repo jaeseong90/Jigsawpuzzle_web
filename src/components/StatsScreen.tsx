@@ -12,6 +12,8 @@ import {
 import { STAGES, TOTAL_STAGE_COUNT } from "@/data/stages";
 import { loadClearEvents, type ClearEvent } from "@/lib/playEvents";
 import { currentTier } from "@/lib/dailyRewards";
+import { listPersonalPhotos } from "@/lib/personalLibrary";
+import AchievementsRow from "./AchievementsRow";
 
 type Props = {
   open: boolean;
@@ -25,6 +27,7 @@ export default function StatsScreen({ open, onClose }: Props) {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [daily, setDaily] = useState<DailyRecord | null>(null);
   const [events, setEvents] = useState<ClearEvent[]>([]);
+  const [personalCount, setPersonalCount] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -32,6 +35,9 @@ export default function StatsScreen({ open, onClose }: Props) {
     setProgress(loadProgress());
     setDaily(loadDaily());
     setEvents(loadClearEvents());
+    listPersonalPhotos()
+      .then((list) => setPersonalCount(list.length))
+      .catch(() => setPersonalCount(0));
   }, [open]);
 
   const summary = useMemo(() => {
@@ -472,6 +478,19 @@ export default function StatsScreen({ open, onClose }: Props) {
               </div>
             </>
           )}
+
+          {/* Achievements */}
+          <section
+            className="rounded-2xl px-4 py-4"
+            style={{
+              background: "var(--bg-surface)",
+              border: "1px solid var(--line)",
+            }}
+          >
+            <AchievementsRow
+              ctx={progress ? { progress, daily, personalCount } : null}
+            />
+          </section>
 
           {/* Difficulty breakdown */}
           <SectionHeader title="난이도" />
