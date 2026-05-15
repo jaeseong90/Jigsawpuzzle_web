@@ -44,7 +44,13 @@ import {
   type StreakTier,
 } from "@/lib/dailyRewards";
 import StreakCelebration from "@/components/StreakCelebration";
+import AchievementCelebration from "@/components/AchievementCelebration";
 import { recordClearEvent } from "@/lib/playEvents";
+import {
+  ACHIEVEMENTS,
+  type Achievement,
+  type AchievementContext,
+} from "@/data/achievements";
 
 type ZenSource =
   | { kind: "stage"; stageId: number }
@@ -79,6 +85,9 @@ export default function Home() {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [view, setView] = useState<View>({ kind: "menu" });
   const [pendingMilestone, setPendingMilestone] = useState<StreakTier | null>(
+    null
+  );
+  const [pendingAchievement, setPendingAchievement] = useState<Achievement | null>(
     null
   );
 
@@ -197,10 +206,16 @@ export default function Home() {
   }, [view, progress]);
 
   const celebrationOverlay = (
-    <StreakCelebration
-      tier={pendingMilestone}
-      onClose={() => setPendingMilestone(null)}
-    />
+    <>
+      <StreakCelebration
+        tier={pendingMilestone}
+        onClose={() => setPendingMilestone(null)}
+      />
+      <AchievementCelebration
+        achievement={pendingAchievement}
+        onClose={() => setPendingAchievement(null)}
+      />
+    </>
   );
 
   if (view.kind === "menu") {
@@ -353,6 +368,19 @@ export default function Home() {
     });
 
     if (milestone) setPendingMilestone(milestone);
+
+    // Detect newly earned achievements by diffing prev→next progress.
+    const dailyNow = loadDaily();
+    const prevCtx: AchievementContext = { progress: prev, daily, personalCount: 0 };
+    const nextCtx: AchievementContext = {
+      progress: next,
+      daily: dailyNow,
+      personalCount: 0,
+    };
+    const newlyEarned = ACHIEVEMENTS.find(
+      (a) => a.check(nextCtx) && !a.check(prevCtx)
+    );
+    if (newlyEarned) setPendingAchievement(newlyEarned);
   };
 
   const handleExit = () => setView({ kind: "menu" });
