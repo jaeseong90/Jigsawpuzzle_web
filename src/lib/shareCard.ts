@@ -19,6 +19,7 @@ export type ShareCardInput = {
   isDaily: boolean;
   isPersonal?: boolean;
   streak?: number;
+  flowBest?: number;
 };
 
 const W = 1200;
@@ -171,18 +172,33 @@ export async function buildShareCardBlob(input: ShareCardInput): Promise<Blob | 
   ctx.fillText(stars, 64, 520);
 
   // Right-side info column
+  let rightY = 220;
   if (input.isDaily) {
     ctx.fillStyle = COLORS.gold;
     ctx.font =
       "700 18px Inter, -apple-system, BlinkMacSystemFont, sans-serif";
     ctx.textBaseline = "middle";
-    ctx.fillText("DAILY CHALLENGE", 720, 220);
+    ctx.fillText("DAILY CHALLENGE", 720, rightY);
+    rightY += 70;
     if (input.streak && input.streak > 1) {
       ctx.fillStyle = COLORS.ink1;
       ctx.font =
         "700 56px Inter, -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillText(`${input.streak}일 연속`, 720, 290);
+      ctx.fillText(`${input.streak}일 연속`, 720, rightY);
+      rightY += 70;
     }
+  }
+  if (input.flowBest && input.flowBest >= 4) {
+    ctx.fillStyle = COLORS.accent;
+    ctx.font =
+      "700 18px Inter, -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.fillText("FLOW", 720, rightY);
+    rightY += 50;
+    ctx.fillStyle = COLORS.ink1;
+    ctx.font =
+      "700 56px Inter, -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.fillText(`×${input.flowBest}`, 720, rightY);
   }
 
   // Footer

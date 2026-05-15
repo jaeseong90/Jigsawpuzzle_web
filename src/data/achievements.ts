@@ -142,6 +142,27 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     description: "내 사진 10장 등록",
     check: ({ personalCount = 0 }) => personalCount >= 10,
   },
+  {
+    id: "flow-8",
+    icon: "🌊",
+    title: "흐름을 탔다",
+    description: "한 판에 연속 8회 스냅",
+    check: ({ progress }) => (progress.lifetimeBestFlow ?? 0) >= 8,
+  },
+  {
+    id: "flow-15",
+    icon: "💧",
+    title: "물 흐르듯",
+    description: "한 판에 연속 15회 스냅",
+    check: ({ progress }) => (progress.lifetimeBestFlow ?? 0) >= 15,
+  },
+  {
+    id: "flow-25",
+    icon: "🏞️",
+    title: "흐름의 달인",
+    description: "한 판에 연속 25회 스냅",
+    check: ({ progress }) => (progress.lifetimeBestFlow ?? 0) >= 25,
+  },
 ];
 
 export function earnedAchievements(ctx: AchievementContext): Achievement[] {

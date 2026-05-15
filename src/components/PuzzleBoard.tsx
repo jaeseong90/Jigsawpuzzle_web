@@ -66,7 +66,12 @@ type Props = {
   previousBestMs?: number;
   isDaily?: boolean;
   difficulty?: Difficulty;
-  onSolved?: (durationMs: number, stars: number, hintsUsed: number) => void;
+  onSolved?: (
+    durationMs: number,
+    stars: number,
+    hintsUsed: number,
+    flowBest: number
+  ) => void;
   onExit?: () => void;
   onNext?: () => void;
   hasNext?: boolean;
@@ -348,7 +353,12 @@ type BoardProps = {
   isDaily?: boolean;
   difficulty?: Difficulty;
   rotateMode?: boolean;
-  onSolved?: (durationMs: number, stars: number, hintsUsed: number) => void;
+  onSolved?: (
+    durationMs: number,
+    stars: number,
+    hintsUsed: number,
+    flowBest: number
+  ) => void;
   onExit?: () => void;
   onNext?: () => void;
   hasNext?: boolean;
@@ -510,6 +520,13 @@ function Board({
   // a subtle ring around the timer. No popups, no number explosions.
   const [flowCount, setFlowCount] = useState(0);
   const [flowBest, setFlowBest] = useState(0);
+  // Mirror flow values into a ref so the snap handler can read the latest
+  // value at solve-time without taking a dep on every flow tick (which
+  // would re-create the pointer-up callback on each snap).
+  const flowRef = useRef({ count: 0, best: 0 });
+  useEffect(() => {
+    flowRef.current = { count: flowCount, best: flowBest };
+  });
   const lastSnapAtRef = useRef<number>(0);
   const flowDecayTimerRef = useRef<number | null>(null);
 
@@ -809,7 +826,12 @@ function Board({
           const duration = Math.max(0, Date.now() - startedAt - pausedTotal);
           const stars = computeStars(duration, parTimeMs);
           setSolved(true);
-          onSolved?.(duration, stars, hintsUsed);
+          // Capture flowBest *including* the snap that just solved — that
+          // joining edge bumps flow up by one beyond the state visible
+          // here, so the eventual SolveModal still reads the live flowBest
+          // state but the persisted record matches what's celebrated.
+          const f = flowRef.current;
+          onSolved?.(duration, stars, hintsUsed, Math.max(f.best, f.count));
           playSolve();
           pulse("solve");
         } else {
@@ -1423,6 +1445,7 @@ function SolveModal({
         isDaily,
         isPersonal,
         streak: streakDisplay?.streak,
+        flowBest,
       });
       const label =
         result === "shared"

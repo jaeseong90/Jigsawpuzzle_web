@@ -183,7 +183,8 @@ export default function Home() {
   const handleSolved = (
     durationMs: number,
     stars: number,
-    hintsUsed: number
+    hintsUsed: number,
+    flowBest: number
   ) => {
     const prev = progress ?? loadProgress();
     const advanceUnlock = baseStage.id <= prev.unlockedUpTo;
@@ -232,7 +233,7 @@ export default function Home() {
       durationMs,
       stars,
       TOTAL_STAGE_COUNT,
-      { advanceUnlock, difficulty, xpEarned }
+      { advanceUnlock, difficulty, xpEarned, flowBest }
     );
     setProgress(next);
 

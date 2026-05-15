@@ -318,6 +318,15 @@ export default function StatsScreen({ open, onClose }: Props) {
                   : "기록 없음"
               }
             />
+            <BigStat
+              label="최고 Flow"
+              value={
+                progress?.lifetimeBestFlow
+                  ? `×${progress.lifetimeBestFlow}`
+                  : "—"
+              }
+              hint="한 판에 연속 스냅한 횟수"
+            />
           </div>
 
           {/* Daily */}

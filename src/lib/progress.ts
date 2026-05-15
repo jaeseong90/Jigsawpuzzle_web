@@ -24,6 +24,10 @@ export type Progress = {
     relax: Record<number, DifficultyRecord>;
     master: Record<number, DifficultyRecord>;
   };
+  // Best flow run (consecutive snaps) per stage and lifetime. Treated as
+  // an orthogonal metric to time — clean play, not necessarily fast.
+  bestFlow: Record<number, number>;
+  lifetimeBestFlow: number;
 };
 
 export function emptyProgress(): Progress {
@@ -34,6 +38,8 @@ export function emptyProgress(): Progress {
     cleared: {},
     xp: 0,
     bestByDifficulty: { relax: {}, master: {} },
+    bestFlow: {},
+    lifetimeBestFlow: 0,
   };
 }
 
@@ -55,6 +61,9 @@ export function loadProgress(): Progress {
         relax: parsed.bestByDifficulty?.relax ?? empty.bestByDifficulty.relax,
         master: parsed.bestByDifficulty?.master ?? empty.bestByDifficulty.master,
       },
+      bestFlow: parsed.bestFlow ?? {},
+      lifetimeBestFlow:
+        typeof parsed.lifetimeBestFlow === "number" ? parsed.lifetimeBestFlow : 0,
     };
   } catch {
     return emptyProgress();
@@ -80,11 +89,13 @@ export function recordClear(
     advanceUnlock?: boolean;
     difficulty?: Difficulty;
     xpEarned?: number;
+    flowBest?: number;
   }
 ): Progress {
   const advanceUnlock = options?.advanceUnlock ?? true;
   const difficulty: Difficulty = options?.difficulty ?? "standard";
   const xpEarned = options?.xpEarned ?? 0;
+  const flowBest = options?.flowBest ?? 0;
 
   // Daily/replay clears of out-of-band stages should not jump the unlock
   // frontier past intervening stages — pass advanceUnlock=false in that case.
@@ -103,7 +114,13 @@ export function recordClear(
       relax: { ...prev.bestByDifficulty.relax },
       master: { ...prev.bestByDifficulty.master },
     },
+    bestFlow: { ...(prev.bestFlow ?? {}) },
+    lifetimeBestFlow: Math.max(prev.lifetimeBestFlow ?? 0, flowBest),
   };
+  if (flowBest > 0) {
+    const prevFlow = next.bestFlow[stageId] ?? 0;
+    if (flowBest > prevFlow) next.bestFlow[stageId] = flowBest;
+  }
 
   if (difficulty === "standard") {
     const bestTime = prev.bestTimes[stageId];
