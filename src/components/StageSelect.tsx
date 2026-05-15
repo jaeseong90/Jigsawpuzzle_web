@@ -116,6 +116,7 @@ export default function StageSelect({
   // user-initiated toggles after that should stick instead of being
   // overwritten when progress changes (e.g., after a clear).
   const autoPickedRef = useRef(false);
+  const stageRefs = useRef<Map<number, HTMLElement | null>>(new Map());
   useEffect(() => {
     if (!progress) return;
     const target = resumeStageId ?? nextStageId ?? progress.unlockedUpTo;
@@ -124,8 +125,18 @@ export default function StageSelect({
       setOpenChapterId(chId);
       autoPickedRef.current = true;
     }
-    const el = chapterRefs.current.get(chId);
-    if (el) el.scrollIntoView({ block: "start", behavior: "auto" });
+    // Defer the scroll one frame so the expanded chapter grid mounts
+    // first; otherwise we'd target the (still-collapsed) header instead
+    // of the active stage tile inside it.
+    requestAnimationFrame(() => {
+      const stageEl = stageRefs.current.get(target);
+      if (stageEl) {
+        stageEl.scrollIntoView({ block: "center", behavior: "auto" });
+        return;
+      }
+      const el = chapterRefs.current.get(chId);
+      if (el) el.scrollIntoView({ block: "start", behavior: "auto" });
+    });
   }, [progress, resumeStageId, nextStageId]);
 
   const toggleChapter = (id: number) => {
@@ -300,6 +311,10 @@ export default function StageSelect({
                       isNext={nextStageId === s.id}
                       isDaily={dailyStageId === s.id}
                       onPlay={onPlay}
+                      cardRef={(el) => {
+                        if (el) stageRefs.current.set(s.id, el);
+                        else stageRefs.current.delete(s.id);
+                      }}
                       onLockedTap={(stageId) => {
                         const unlockedUpTo = progress?.unlockedUpTo ?? 1;
                         showToast(
@@ -702,6 +717,7 @@ function StageCard({
   isDaily,
   onPlay,
   onLockedTap,
+  cardRef,
 }: {
   stage: Stage;
   progress: Progress | null;
@@ -710,6 +726,7 @@ function StageCard({
   isDaily: boolean;
   onPlay: (s: Stage) => void;
   onLockedTap: (stageId: number) => void;
+  cardRef?: (el: HTMLButtonElement | null) => void;
 }) {
   const sequentiallyUnlocked = progress
     ? stage.id <= progress.unlockedUpTo
@@ -729,6 +746,7 @@ function StageCard({
   return (
     <button
       type="button"
+      ref={cardRef}
       onClick={() => (playable ? onPlay(stage) : onLockedTap(stage.id))}
       className="press-95 relative aspect-square rounded-xl overflow-hidden text-left"
       style={{
