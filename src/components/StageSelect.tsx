@@ -11,6 +11,7 @@ import {
 } from "@/data/stages";
 import { emptyProgress, loadProgress, type Progress } from "@/lib/progress";
 import { listSavedGames } from "@/lib/savedGame";
+import { listPersonalSavedGames } from "@/lib/personalSavedGame";
 import { getStageImageDataUrl, THUMB_SIZE } from "@/lib/stageImage";
 import { getDailyStageId } from "@/lib/daily";
 import dynamic from "next/dynamic";
@@ -53,6 +54,7 @@ export default function StageSelect({
 }: Props) {
   const [progress, setProgress] = useState<Progress | null>(progressOverride ?? null);
   const [resumeStageIds, setResumeStageIds] = useState<number[]>([]);
+  const [personalSavesCount, setPersonalSavesCount] = useState<number>(0);
   const [dailyStageId, setDailyStageId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -60,7 +62,10 @@ export default function StageSelect({
   const [personalOpen, setPersonalOpen] = useState(false);
   const [inProgressOpen, setInProgressOpen] = useState(false);
   const resumeStageId = resumeStageIds[0] ?? null;
-  const extraInProgress = Math.max(0, resumeStageIds.length - 1);
+  // "+N" pill counts every in-progress slot beyond the one shown in the
+  // banner — both stage saves and personal-photo saves.
+  const extraInProgress =
+    Math.max(0, resumeStageIds.length - 1) + personalSavesCount;
   const [toast, setToast] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const toastTimerRef = useRef<number | null>(null);
@@ -88,6 +93,7 @@ export default function StageSelect({
       setProgress(loadProgress());
     }
     setResumeStageIds(listSavedGames().map((s) => s.stageId));
+    setPersonalSavesCount(listPersonalSavedGames().length);
     setDailyStageId(getDailyStageId());
   }, [progressOverride]);
 
@@ -378,6 +384,9 @@ export default function StageSelect({
         onResume={(id) => {
           const stage = STAGES.find((s) => s.id === id);
           if (stage) onPlay(stage);
+        }}
+        onResumePersonal={(opts) => {
+          onPersonal(opts);
         }}
       />
       <StatsScreen open={statsOpen} onClose={() => setStatsOpen(false)} />

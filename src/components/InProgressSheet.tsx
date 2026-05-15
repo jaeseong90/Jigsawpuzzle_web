@@ -6,31 +6,95 @@ import {
   listSavedGames,
   type SavedGameSnapshot,
 } from "@/lib/savedGame";
+import {
+  clearPersonalGame,
+  listPersonalSavedGames,
+  type PersonalSavedSnapshot,
+} from "@/lib/personalSavedGame";
 import { getStage } from "@/data/stages";
 import { getStageImageDataUrl, THUMB_SIZE } from "@/lib/stageImage";
+import {
+  getPersonalPhoto,
+  type PersonalPhoto,
+} from "@/lib/personalLibrary";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   onResume: (stageId: number) => void;
+  onResumePersonal?: (opts: {
+    photoId: string;
+    imageSrc: string;
+    rows: number;
+    cols: number;
+    rotate: boolean;
+  }) => void;
 };
+
+type Item =
+  | { kind: "stage"; snapshot: SavedGameSnapshot; savedAt: number }
+  | {
+      kind: "personal";
+      snapshot: PersonalSavedSnapshot;
+      photo: PersonalPhoto;
+      savedAt: number;
+    };
 
 // Lists every in-progress puzzle so the player can hop between them. Adults
 // often rotate through a few puzzles rather than playing in a strict line.
-export default function InProgressSheet({ open, onClose, onResume }: Props) {
-  const [items, setItems] = useState<SavedGameSnapshot[]>([]);
+export default function InProgressSheet({
+  open,
+  onClose,
+  onResume,
+  onResumePersonal,
+}: Props) {
+  const [items, setItems] = useState<Item[]>([]);
+
+  const reload = async () => {
+    const stageItems: Item[] = listSavedGames().map((s) => ({
+      kind: "stage",
+      snapshot: s,
+      savedAt: s.savedAt,
+    }));
+    const personalSaves = listPersonalSavedGames();
+    const personalItems: Item[] = [];
+    for (const save of personalSaves) {
+      try {
+        const photo = await getPersonalPhoto(save.photoId);
+        if (photo) {
+          personalItems.push({
+            kind: "personal",
+            snapshot: save,
+            photo,
+            savedAt: save.savedAt,
+          });
+        }
+      } catch {
+        /* skip missing photo */
+      }
+    }
+    const merged = [...stageItems, ...personalItems].sort(
+      (a, b) => b.savedAt - a.savedAt
+    );
+    setItems(merged);
+  };
 
   useEffect(() => {
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setItems(listSavedGames());
+    void reload();
   }, [open]);
 
   if (!open) return null;
 
-  const discard = (stageId: number) => {
+  const discardStage = (stageId: number) => {
     clearSavedGameFor(stageId);
-    setItems(listSavedGames());
+    void reload();
+  };
+
+  const discardPersonal = (photoId: string) => {
+    clearPersonalGame(photoId);
+    void reload();
   };
 
   return (
@@ -86,17 +150,37 @@ export default function InProgressSheet({ open, onClose, onResume }: Props) {
               진행 중인 퍼즐이 없어요
             </div>
           ) : (
-            items.map((item) => (
-              <Row
-                key={item.stageId}
-                snapshot={item}
-                onResume={() => {
-                  onClose();
-                  onResume(item.stageId);
-                }}
-                onDiscard={() => discard(item.stageId)}
-              />
-            ))
+            items.map((item) =>
+              item.kind === "stage" ? (
+                <StageRow
+                  key={`stage-${item.snapshot.stageId}`}
+                  snapshot={item.snapshot}
+                  onResume={() => {
+                    onClose();
+                    onResume(item.snapshot.stageId);
+                  }}
+                  onDiscard={() => discardStage(item.snapshot.stageId)}
+                />
+              ) : (
+                <PersonalRow
+                  key={`personal-${item.snapshot.photoId}`}
+                  snapshot={item.snapshot}
+                  photo={item.photo}
+                  onResume={() => {
+                    if (!onResumePersonal) return;
+                    onClose();
+                    onResumePersonal({
+                      photoId: item.snapshot.photoId,
+                      imageSrc: item.photo.dataUrl,
+                      rows: item.snapshot.rows,
+                      cols: item.snapshot.cols,
+                      rotate: item.snapshot.rotate,
+                    });
+                  }}
+                  onDiscard={() => discardPersonal(item.snapshot.photoId)}
+                />
+              )
+            )
           )}
         </div>
       </div>
@@ -104,7 +188,7 @@ export default function InProgressSheet({ open, onClose, onResume }: Props) {
   );
 }
 
-function Row({
+function StageRow({
   snapshot,
   onResume,
   onDiscard,
@@ -159,6 +243,95 @@ function Row({
                 BOSS
               </span>
             )}
+          </div>
+          <div
+            className="text-[11px] font-semibold tabular-nums"
+            style={{ color: "var(--ink-mute)" }}
+          >
+            {elapsed}
+          </div>
+        </div>
+        <div
+          className="text-[11px] mt-0.5 tabular-nums"
+          style={{ color: "var(--ink-mute)" }}
+        >
+          {correct}/{total} 맞춤 · {savedAgo}
+        </div>
+      </button>
+      <button
+        type="button"
+        onClick={onDiscard}
+        aria-label="이 슬롯 버리기"
+        className="press-95 px-3 flex items-center justify-center"
+        style={{
+          borderLeft: "1px solid var(--line)",
+          color: "var(--ink-mute)",
+        }}
+      >
+        <span style={{ fontSize: 16 }} aria-hidden>
+          ⨯
+        </span>
+      </button>
+    </div>
+  );
+}
+
+function PersonalRow({
+  snapshot,
+  photo,
+  onResume,
+  onDiscard,
+}: {
+  snapshot: PersonalSavedSnapshot;
+  photo: PersonalPhoto;
+  onResume: () => void;
+  onDiscard: () => void;
+}) {
+  const elapsed = formatTime(snapshot.elapsedMs);
+  const correct = snapshot.pieces.filter((p) => {
+    const home = p.origRow * snapshot.cols + p.origCol;
+    return p.currentIndex === home && (p.rotation ?? 0) === 0;
+  }).length;
+  const total = snapshot.pieces.length;
+  const savedAgo = relativeTime(snapshot.savedAt);
+  return (
+    <div
+      className="flex items-stretch rounded-xl overflow-hidden"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--line)",
+      }}
+    >
+      <div className="w-16 flex-none relative">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photo.thumbDataUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+          decoding="async"
+        />
+      </div>
+      <button
+        type="button"
+        onClick={onResume}
+        className="press-95 flex-1 px-3 py-2 text-left"
+      >
+        <div className="flex items-center justify-between">
+          <div
+            className="text-sm font-semibold flex items-center gap-1.5"
+            style={{ color: "var(--ink-1)" }}
+          >
+            내 사진
+            <span
+              className="text-[9px] tracking-[0.14em] font-bold rounded-sm px-1 py-0.5"
+              style={{
+                background: "var(--accent-soft)",
+                color: "var(--accent-soft-fg)",
+              }}
+            >
+              {snapshot.rows}×{snapshot.cols}
+              {snapshot.rotate ? " · 회전" : ""}
+            </span>
           </div>
           <div
             className="text-[11px] font-semibold tabular-nums"
