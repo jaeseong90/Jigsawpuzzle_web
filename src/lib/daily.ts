@@ -12,6 +12,7 @@ export type DailyRecord = {
   stars?: number;
   // Lifetime streak / count.
   streak: number;
+  bestStreak: number;
   totalCleared: number;
   lastClearedDate?: string;
 };
@@ -43,6 +44,7 @@ function emptyRecord(dateKey: string): DailyRecord {
     stageId: getDailyStageId(dateKey),
     cleared: false,
     streak: 0,
+    bestStreak: 0,
     totalCleared: 0,
   };
 }
@@ -56,6 +58,10 @@ export function loadDaily(): DailyRecord {
     const parsed = JSON.parse(raw) as Partial<DailyRecord> | null;
     if (!parsed) return emptyRecord(today);
     const streak = typeof parsed.streak === "number" ? parsed.streak : 0;
+    const bestStreak =
+      typeof parsed.bestStreak === "number"
+        ? parsed.bestStreak
+        : Math.max(streak, 0);
     const totalCleared =
       typeof parsed.totalCleared === "number" ? parsed.totalCleared : 0;
     const lastClearedDate = parsed.lastClearedDate;
@@ -69,6 +75,7 @@ export function loadDaily(): DailyRecord {
         stageId: getDailyStageId(today),
         cleared: false,
         streak: continuingStreak,
+        bestStreak: Math.max(bestStreak, continuingStreak),
         totalCleared,
         lastClearedDate,
       };
@@ -80,6 +87,7 @@ export function loadDaily(): DailyRecord {
       durationMs: parsed.durationMs,
       stars: parsed.stars,
       streak,
+      bestStreak: Math.max(bestStreak, streak),
       totalCleared,
       lastClearedDate,
     };
@@ -128,12 +136,14 @@ export function recordDailyClear(
   }
   const today = prev.date;
   const continuing = prev.lastClearedDate === yesterdayKey(today);
+  const newStreak = continuing ? prev.streak + 1 : 1;
   const next: DailyRecord = {
     ...prev,
     cleared: true,
     durationMs,
     stars,
-    streak: continuing ? prev.streak + 1 : 1,
+    streak: newStreak,
+    bestStreak: Math.max(prev.bestStreak ?? 0, newStreak),
     totalCleared: prev.totalCleared + 1,
     lastClearedDate: today,
   };

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getStageImageDataUrl } from "@/lib/stageImage";
 import { loadDaily, type DailyRecord } from "@/lib/daily";
+import { currentTier } from "@/lib/dailyRewards";
 import { getStage, type Stage } from "@/data/stages";
 import DailyCalendar from "./DailyCalendar";
 
@@ -24,6 +25,7 @@ export default function DailyBanner({ onPlay }: Props) {
   if (!stage) return null;
 
   const thumb = getStageImageDataUrl(record.stageId);
+  const tier = currentTier(record.streak);
 
   return (
     <>
@@ -70,18 +72,34 @@ export default function DailyBanner({ onPlay }: Props) {
                 )}
               </div>
               <div
-                className="mt-0.5 text-[11px] tabular-nums"
+                className="mt-0.5 text-[11px] tabular-nums flex items-center gap-1.5"
                 style={{ color: "var(--ink-mute)" }}
               >
-                {record.cleared
-                  ? `완료 · ${formatTime(record.durationMs ?? 0)}${
-                      record.stars
-                        ? ` · ${"★".repeat(record.stars)}`
-                        : ""
-                    }`
-                  : record.streak > 0
-                  ? `연속 ${record.streak}일째`
-                  : "오늘의 그림"}
+                {record.cleared ? (
+                  <>
+                    완료 · {formatTime(record.durationMs ?? 0)}
+                    {record.stars ? ` · ${"★".repeat(record.stars)}` : ""}
+                  </>
+                ) : record.streak > 0 ? (
+                  <>연속 {record.streak}일째</>
+                ) : (
+                  "오늘의 그림"
+                )}
+                {tier && record.streak > 0 && (
+                  <span
+                    className="streak-chip inline-flex items-center gap-0.5 rounded-full px-1.5 py-[1px] font-semibold tabular-nums"
+                    style={{
+                      background: "var(--gold-soft)",
+                      color: "var(--gold)",
+                      fontSize: "10px",
+                    }}
+                  >
+                    <span aria-hidden style={{ fontSize: "11px" }}>
+                      {tier.flair}
+                    </span>
+                    {record.streak}
+                  </span>
+                )}
               </div>
             </div>
             <div

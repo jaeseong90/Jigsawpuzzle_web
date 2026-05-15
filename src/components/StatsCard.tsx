@@ -108,7 +108,14 @@ export default function StatsCard() {
       )}
       {daily && (
         <>
-          <Row label="데일리 연속" value={`${daily.streak}일`} />
+          <Row
+            label="데일리 연속"
+            value={
+              daily.bestStreak > daily.streak
+                ? `${daily.streak}일 · 최고 ${daily.bestStreak}일`
+                : `${daily.streak}일`
+            }
+          />
           <Row label="데일리 누적" value={`${daily.totalCleared}회`} />
         </>
       )}
