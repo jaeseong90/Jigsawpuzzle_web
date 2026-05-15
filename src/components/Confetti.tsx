@@ -3,14 +3,18 @@
 import { useMemo, useState } from "react";
 import { seedRng } from "@/lib/seedRng";
 
+// Warm brass + dusk palette so confetti reads as celebratory without
+// clashing with TESSERA's adult-casual aesthetic. Old rainbow looked
+// like a kids-game burst.
 const COLORS = [
-  "#f59e0b",
-  "#dc2626",
-  "#10b981",
-  "#3b82f6",
-  "#a855f7",
-  "#ec4899",
-  "#facc15",
+  "#d4a05c", // gold-bright
+  "#b08948", // gold
+  "#efe2c2", // gold-soft
+  "#8a5a2b", // accent (amber)
+  "#b3351f", // danger ember
+  "#4a6b3a", // sage success
+  "#3a5d7b", // harbor blue
+  "#6b3d6e", // twilight plum
 ];
 
 type Piece = {
