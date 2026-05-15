@@ -12,6 +12,7 @@ import {
 import {
   clearPersonalGame,
   listPersonalSavedGames,
+  type PersonalSavedSnapshot,
 } from "@/lib/personalSavedGame";
 
 type Tab = "stages" | "personal";
@@ -42,7 +43,9 @@ export default function PhotoGallery({
   const [focused, setFocused] = useState<Stage | null>(null);
   const [tab, setTab] = useState<Tab>("stages");
   const [personal, setPersonal] = useState<PersonalPhoto[]>([]);
-  const [resumableIds, setResumableIds] = useState<Set<string>>(new Set());
+  const [resumable, setResumable] = useState<Map<string, PersonalSavedSnapshot>>(
+    new Map()
+  );
   const [focusedPersonal, setFocusedPersonal] =
     useState<PersonalPhoto | null>(null);
 
@@ -53,9 +56,9 @@ export default function PhotoGallery({
     setFocused(null);
     setFocusedPersonal(null);
     listPersonalPhotos().then(setPersonal).catch(() => setPersonal([]));
-    setResumableIds(
-      new Set(listPersonalSavedGames().map((g) => g.photoId))
-    );
+    const map = new Map<string, PersonalSavedSnapshot>();
+    for (const g of listPersonalSavedGames()) map.set(g.photoId, g);
+    setResumable(map);
   }, [open]);
 
   const cleared = useMemo(() => {
@@ -69,9 +72,9 @@ export default function PhotoGallery({
     clearPersonalGame(id);
     await deletePersonalPhoto(id);
     setPersonal((prev) => prev.filter((p) => p.id !== id));
-    setResumableIds((prev) => {
+    setResumable((prev) => {
       if (!prev.has(id)) return prev;
-      const next = new Set(prev);
+      const next = new Map(prev);
       next.delete(id);
       return next;
     });
@@ -177,7 +180,7 @@ export default function PhotoGallery({
               <PersonalTile
                 key={p.id}
                 photo={p}
-                resumable={resumableIds.has(p.id)}
+                resume={resumable.get(p.id) ?? null}
                 onTap={() => setFocusedPersonal(p)}
               />
             ))}
@@ -197,7 +200,7 @@ export default function PhotoGallery({
       {focusedPersonal && (
         <FocusedPersonal
           photo={focusedPersonal}
-          resumable={resumableIds.has(focusedPersonal.id)}
+          resume={resumable.get(focusedPersonal.id) ?? null}
           onClose={() => setFocusedPersonal(null)}
           onReplay={
             onPersonalReplay
@@ -338,14 +341,25 @@ function GalleryTile({
 
 function PersonalTile({
   photo,
-  resumable,
+  resume,
   onTap,
 }: {
   photo: PersonalPhoto;
-  resumable: boolean;
+  resume: PersonalSavedSnapshot | null;
   onTap: () => void;
 }) {
   const [loaded, setLoaded] = useState(false);
+  const progressPct = resume
+    ? Math.round(
+        (resume.pieces.filter(
+          (p) =>
+            p.currentIndex === p.origRow * resume.cols + p.origCol &&
+            (p.rotation ?? 0) === 0
+        ).length /
+          Math.max(1, resume.pieces.length)) *
+          100
+      )
+    : null;
   return (
     <button
       type="button"
@@ -367,7 +381,7 @@ function PersonalTile({
           className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
           style={{ opacity: loaded ? 1 : 0 }}
         />
-        {resumable ? (
+        {resume ? (
           <span
             className="absolute top-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold"
             style={{
@@ -392,6 +406,20 @@ function PersonalTile({
             </span>
           )
         )}
+        {resume && progressPct != null && (
+          <div
+            className="absolute left-0 right-0 bottom-0 h-1"
+            style={{ background: "rgba(0,0,0,0.2)" }}
+          >
+            <div
+              className="h-full"
+              style={{
+                width: `${progressPct}%`,
+                background: "var(--accent)",
+              }}
+            />
+          </div>
+        )}
       </div>
       <div className="px-2 py-1.5 flex items-center justify-between">
         <span
@@ -404,7 +432,11 @@ function PersonalTile({
           className="text-[10px] tabular-nums"
           style={{ color: "var(--ink-mute)" }}
         >
-          {photo.bestTimeMs != null ? formatTime(photo.bestTimeMs) : "—"}
+          {resume
+            ? formatTime(resume.elapsedMs)
+            : photo.bestTimeMs != null
+            ? formatTime(photo.bestTimeMs)
+            : "—"}
         </span>
       </div>
     </button>
@@ -482,13 +514,13 @@ function FocusedPhoto({
 
 function FocusedPersonal({
   photo,
-  resumable,
+  resume,
   onClose,
   onReplay,
   onDelete,
 }: {
   photo: PersonalPhoto;
-  resumable: boolean;
+  resume: PersonalSavedSnapshot | null;
   onClose: () => void;
   onReplay?: (opts: {
     imageSrc: string;
@@ -572,7 +604,7 @@ function FocusedPersonal({
                   color: "var(--accent-fg)",
                 }}
               >
-                {resumable ? "이어하기" : "다시 풀기"}
+                {resume ? `이어하기 · ${formatTime(resume.elapsedMs)}` : "다시 풀기"}
               </button>
             )}
             <button
