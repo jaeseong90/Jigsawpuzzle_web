@@ -17,6 +17,7 @@ import SettingsSheet from "./SettingsSheet";
 import DailyBanner from "./DailyBanner";
 import LevelChip from "./LevelChip";
 import PhotoGallery from "./PhotoGallery";
+import StatsScreen from "./StatsScreen";
 import PersonalPhotoPicker from "./PersonalPhotoPicker";
 import InProgressSheet from "./InProgressSheet";
 
@@ -41,6 +42,7 @@ export default function StageSelect({
   const [resumeStageIds, setResumeStageIds] = useState<number[]>([]);
   const [dailyStageId, setDailyStageId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [personalOpen, setPersonalOpen] = useState(false);
   const [inProgressOpen, setInProgressOpen] = useState(false);
@@ -188,7 +190,7 @@ export default function StageSelect({
       </header>
 
       <div className="mt-3">
-        <LevelChip progress={progress} />
+        <LevelChip progress={progress} onClick={() => setStatsOpen(true)} />
       </div>
 
       <DailyBanner onPlay={onPlay} />
@@ -360,6 +362,7 @@ export default function StageSelect({
           if (stage) onPlay(stage);
         }}
       />
+      <StatsScreen open={statsOpen} onClose={() => setStatsOpen(false)} />
 
       {toast && (
         <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4 pointer-events-none">
