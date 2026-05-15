@@ -287,13 +287,18 @@ export default function Home() {
           cols={view.cols}
           stageLabel={view.stageLabel}
           difficulty="standard"
-          hasNext={false}
+          // In Zen mode, "다음" shouldn't drop the player back to menu —
+          // it should refresh into another randomly picked puzzle, keeping
+          // the session going as long as they want.
+          hasNext
           zen
           onSolved={() => {
             /* Zen does not record progress / XP / completions */
           }}
           onExit={() => setView({ kind: "menu" })}
-          onNext={() => setView({ kind: "menu" })}
+          onNext={() => {
+            void launchZen();
+          }}
         />
         {celebrationOverlay}
       </>

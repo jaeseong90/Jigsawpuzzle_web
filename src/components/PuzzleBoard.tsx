@@ -1220,7 +1220,7 @@ function Board({
           onExit={onExit}
           onReplay={replay}
           onNext={hasNext ? onNext : onExit}
-          nextLabel={hasNext ? "다음 ▶" : "완료"}
+          nextLabel={zen ? "또 한 판 ▶" : hasNext ? "다음 ▶" : "완료"}
         />
       )}
     </div>
