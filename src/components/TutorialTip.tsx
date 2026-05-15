@@ -48,16 +48,21 @@ export default function TutorialTip() {
         >
           <li>
             <b style={{ color: "var(--ink-1)" }}>드래그</b>로 조각을 옮기면 두
-            칸의 자리가 바뀌어요.
+            칸의 자리가 바뀌어요. 정답 위치로 인접하면 자동으로 붙어요.
           </li>
           <li>
-            인접한 조각이 정답 위치 관계로 만나면 자동으로 붙어서 같이
-            움직여요.
+            막히면 <b style={{ color: "var(--ink-1)" }}>힌트</b>, 그림이 보고
+            싶으면 <b style={{ color: "var(--ink-1)" }}>미리보기</b>, 잠시
+            멈추려면 <b style={{ color: "var(--ink-1)" }}>일시정지</b>.
           </li>
           <li>
-            막히면 <b style={{ color: "var(--ink-1)" }}>힌트</b>, 보고 싶으면{" "}
-            <b style={{ color: "var(--ink-1)" }}>미리보기</b>, 잠시 멈추려면{" "}
-            <b style={{ color: "var(--ink-1)" }}>일시정지</b>.
+            홈의 <b style={{ color: "var(--ink-1)" }}>＋</b> 버튼으로 내 사진을
+            퍼즐로 만들고, <b style={{ color: "var(--ink-1)" }}>◧</b> 갤러리에서
+            완성한 그림과 내 사진을 다시 풀 수 있어요.
+          </li>
+          <li>
+            매일 새로운 <b style={{ color: "var(--ink-1)" }}>오늘의 도전</b>이
+            기다려요. 3·7·14·30일 연속으로 풀면 보너스 XP와 배지를 받아요.
           </li>
           <li>
             난이도는 <b style={{ color: "var(--ink-1)" }}>설정</b>에서 정해요.
