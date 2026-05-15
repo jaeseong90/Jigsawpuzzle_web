@@ -228,7 +228,7 @@ export default function StageSelect({
 
       <DailyBanner onPlay={onPlay} />
 
-      {resumeStageId != null && (
+      {resumeStageId != null ? (
         <ResumeBanner
           stageId={resumeStageId}
           extra={extraInProgress}
@@ -240,7 +240,15 @@ export default function StageSelect({
             extraInProgress > 0 ? () => setInProgressOpen(true) : undefined
           }
         />
-      )}
+      ) : nextStageId != null ? (
+        <NextStageBanner
+          stageId={nextStageId}
+          onPlay={() => {
+            const stage = STAGES.find((s) => s.id === nextStageId);
+            if (stage) onPlay(stage);
+          }}
+        />
+      ) : null}
 
       <div className="mt-5 space-y-3">
         {CHAPTERS.map((ch) => {
@@ -419,6 +427,51 @@ function BrandMark() {
         <rect x="34" y="34" width="22" height="22" rx="3" fill="var(--accent)" />
       </svg>
     </span>
+  );
+}
+
+function NextStageBanner({
+  stageId,
+  onPlay,
+}: {
+  stageId: number;
+  onPlay: () => void;
+}) {
+  const thumb = getStageImageDataUrl(stageId);
+  return (
+    <button
+      type="button"
+      onClick={onPlay}
+      className="press-95 mt-3 w-full flex items-stretch rounded-2xl overflow-hidden text-left"
+      style={{
+        background: "var(--accent)",
+        color: "var(--accent-fg)",
+      }}
+    >
+      <div className="relative w-20 flex-none">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={thumb}
+          alt=""
+          decoding="async"
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      </div>
+      <div className="flex-1 flex items-center justify-between px-4 py-3">
+        <div>
+          <div className="text-[10px] tracking-[0.18em] uppercase font-bold opacity-85">
+            Next
+          </div>
+          <div className="text-base font-semibold">
+            스테이지 {stageId} 시작
+          </div>
+        </div>
+        <div className="text-xl" aria-hidden>
+          ▶
+        </div>
+      </div>
+    </button>
   );
 }
 
