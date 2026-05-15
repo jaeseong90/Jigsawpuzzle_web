@@ -13,6 +13,10 @@ import { STAGES, TOTAL_STAGE_COUNT } from "@/data/stages";
 import { loadClearEvents, type ClearEvent } from "@/lib/playEvents";
 import { currentTier } from "@/lib/dailyRewards";
 import { listPersonalPhotos } from "@/lib/personalLibrary";
+import {
+  earnedTessera,
+  tesseraBalance,
+} from "@/lib/cosmetics";
 import AchievementsRow from "./AchievementsRow";
 
 type Props = {
@@ -327,6 +331,16 @@ export default function StatsScreen({ open, onClose }: Props) {
               }
               hint="한 판에 연속 스냅한 횟수"
             />
+            {progress && (
+              <BigStat
+                label="테세라"
+                value={`◆ ${tesseraBalance(progress).toLocaleString()}`}
+                hint={`누적 ${earnedTessera(progress).toLocaleString()} · 사용 ${
+                  progress.tesseraSpent?.toLocaleString() ?? 0
+                }`}
+                accent="gold"
+              />
+            )}
           </div>
 
           {/* Daily */}

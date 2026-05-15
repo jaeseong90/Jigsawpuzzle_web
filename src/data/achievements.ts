@@ -1,5 +1,6 @@
 import type { Progress } from "@/lib/progress";
 import type { DailyRecord } from "@/lib/daily";
+import { earnedTessera } from "@/lib/cosmetics";
 
 export type AchievementContext = {
   progress: Progress;
@@ -162,6 +163,20 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "흐름의 달인",
     description: "한 판에 연속 25회 스냅",
     check: ({ progress }) => (progress.lifetimeBestFlow ?? 0) >= 25,
+  },
+  {
+    id: "tessera-collector",
+    icon: "◆",
+    title: "테세라 수집가",
+    description: "누적 1,000 테세라 모음",
+    check: ({ progress }) => earnedTessera(progress) >= 1000,
+  },
+  {
+    id: "palette-master",
+    icon: "🎨",
+    title: "팔레트의 주인",
+    description: "모든 팔레트 잠금해제 (1,680)",
+    check: ({ progress }) => (progress.tesseraSpent ?? 0) >= 1680,
   },
 ];
 
