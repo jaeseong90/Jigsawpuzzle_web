@@ -21,6 +21,8 @@ import {
   loadPersonalGame,
   savePersonalGame,
 } from "@/lib/personalSavedGame";
+import { loadDaily } from "@/lib/daily";
+import { currentTier } from "@/lib/dailyRewards";
 import {
   playGroupMerge,
   playHint,
@@ -1393,6 +1395,13 @@ function SolveModal({
   const [shareBusy, setShareBusy] = useState(false);
   const [shareToast, setShareToast] = useState<string | null>(null);
   const isPersonal = stageId == null;
+  const streakDisplay = useMemo(() => {
+    if (!isDaily) return null;
+    const d = loadDaily();
+    if (d.streak <= 0) return null;
+    const tier = currentTier(d.streak);
+    return { streak: d.streak, flair: tier?.flair };
+  }, [isDaily]);
 
   const handleShare = async () => {
     if (shareBusy) return;
@@ -1460,6 +1469,12 @@ function SolveModal({
           )}
           {isPerfect && <Tag tone="gold">Perfect</Tag>}
           {isDaily && <Tag tone="gold">오늘의 도전</Tag>}
+          {streakDisplay && (
+            <Tag tone="gold">
+              {streakDisplay.flair ? `${streakDisplay.flair} ` : ""}
+              {streakDisplay.streak}일 연속
+            </Tag>
+          )}
           <Tag tone="soft">{moveCount}회 이동</Tag>
           {hintsUsed > 0 && <Tag tone="soft">힌트 {hintsUsed}</Tag>}
           {flowBest >= 4 && <Tag tone="accent">Flow ×{flowBest}</Tag>}
