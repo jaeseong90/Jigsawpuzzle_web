@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getStageImageDataUrl, THUMB_SIZE } from "@/lib/stageImage";
-import { loadDaily, type DailyRecord } from "@/lib/daily";
+import { getTodayKey, loadDaily, type DailyRecord } from "@/lib/daily";
+import { loadDailyHistory } from "@/lib/dailyHistory";
 import { currentTier } from "@/lib/dailyRewards";
 import { getStage, type Stage } from "@/data/stages";
 import DailyCalendar from "./DailyCalendar";
@@ -19,6 +20,30 @@ export default function DailyBanner({ onPlay }: Props) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRecord(loadDaily());
   }, []);
+
+  // Past-7-days strip — most recent day (today) is rightmost. Each cell
+  // reads from dailyHistory; today's own state comes from the live daily
+  // record so it updates the moment the player solves.
+  const last7 = useMemo(() => {
+    if (!record) return [];
+    const todayKey = getTodayKey();
+    const history = loadDailyHistory();
+    const cells: Array<{ key: string; cleared: boolean; stars: number; isToday: boolean }> = [];
+    const today = new Date(todayKey);
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+        d.getDate()
+      ).padStart(2, "0")}`;
+      const isToday = key === todayKey;
+      const entry = history[key];
+      const cleared = isToday ? record.cleared : !!entry;
+      const stars = isToday ? record.stars ?? 0 : entry?.stars ?? 0;
+      cells.push({ key, cleared, stars, isToday });
+    }
+    return cells;
+  }, [record]);
 
   if (!record) return null;
   const stage = getStage(record.stageId);
@@ -113,16 +138,41 @@ export default function DailyBanner({ onPlay }: Props) {
           <button
             type="button"
             onClick={() => setCalendarOpen(true)}
-            aria-label="일일 캘린더"
-            className="press-95 px-3 flex items-center justify-center"
+            aria-label="지난 7일 캘린더"
+            className="press-95 flex flex-col items-center justify-center gap-1 px-3"
             style={{
               borderLeft: "1px solid var(--line)",
               color: "var(--ink-2)",
+              minWidth: 84,
             }}
           >
-            <span aria-hidden style={{ fontSize: 16 }}>
-              ▦
-            </span>
+            <div
+              className="text-[9px] tracking-[0.14em] font-bold uppercase"
+              style={{ color: "var(--ink-mute)" }}
+            >
+              7 DAYS
+            </div>
+            <div className="flex items-end gap-[3px]">
+              {last7.map((c) => (
+                <div
+                  key={c.key}
+                  aria-hidden
+                  style={{
+                    width: 6,
+                    height: c.cleared ? 14 : 6,
+                    borderRadius: 9999,
+                    background: c.cleared
+                      ? "var(--gold)"
+                      : c.isToday
+                      ? "var(--accent-soft)"
+                      : "var(--bg-elevated)",
+                    border: c.isToday
+                      ? "1px solid var(--gold)"
+                      : "1px solid var(--line-soft)",
+                  }}
+                />
+              ))}
+            </div>
           </button>
         </div>
       </div>
