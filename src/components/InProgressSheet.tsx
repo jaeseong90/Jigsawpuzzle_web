@@ -17,6 +17,7 @@ import {
   getPersonalPhoto,
   type PersonalPhoto,
 } from "@/lib/personalLibrary";
+import { useBackButton } from "@/lib/backNav";
 
 type Props = {
   open: boolean;
@@ -49,6 +50,8 @@ export default function InProgressSheet({
   onResumePersonal,
 }: Props) {
   const [items, setItems] = useState<Item[]>([]);
+
+  useBackButton(open, onClose);
 
   const reload = async () => {
     const stageItems: Item[] = listSavedGames().map((s) => ({

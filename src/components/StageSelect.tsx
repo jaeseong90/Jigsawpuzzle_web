@@ -18,7 +18,7 @@ import dynamic from "next/dynamic";
 import TutorialTip from "./TutorialTip";
 import DailyBanner from "./DailyBanner";
 import LevelChip from "./LevelChip";
-import { useBackButton, useExitGuard } from "@/lib/backNav";
+import { useExitGuard } from "@/lib/backNav";
 
 // Modals/overlays are only mounted when the player opens them, so defer
 // their bundle splits to keep first-paint quick on the home shelf.
@@ -86,13 +86,9 @@ export default function StageSelect({
     }, 1800);
   };
 
-  // Android back: close whichever sheet is on top first; only when no sheet
-  // is open does the exit guard kick in and require a second press to leave.
-  useBackButton(settingsOpen, () => setSettingsOpen(false));
-  useBackButton(statsOpen, () => setStatsOpen(false));
-  useBackButton(galleryOpen, () => setGalleryOpen(false));
-  useBackButton(personalOpen, () => setPersonalOpen(false));
-  useBackButton(inProgressOpen, () => setInProgressOpen(false));
+  // Android back at the menu requires a second press within 2s to actually
+  // exit the PWA. Each sheet/overlay registers its own handler on top of the
+  // stack, so this only fires when the menu itself is in focus.
   useExitGuard(true, () => showToast("한 번 더 누르면 종료됩니다"));
 
   useEffect(() => {
@@ -136,27 +132,12 @@ export default function StageSelect({
   // user-initiated toggles after that should stick instead of being
   // overwritten when progress changes (e.g., after a clear).
   const autoPickedRef = useRef(false);
-  const stageRefs = useRef<Map<number, HTMLElement | null>>(new Map());
   useEffect(() => {
     if (!progress) return;
+    if (autoPickedRef.current) return;
     const target = resumeStageId ?? nextStageId ?? progress.unlockedUpTo;
-    const chId = chapterIdForStage(target);
-    if (!autoPickedRef.current) {
-      setOpenChapterId(chId);
-      autoPickedRef.current = true;
-    }
-    // Defer the scroll one frame so the expanded chapter grid mounts
-    // first; otherwise we'd target the (still-collapsed) header instead
-    // of the active stage tile inside it.
-    requestAnimationFrame(() => {
-      const stageEl = stageRefs.current.get(target);
-      if (stageEl) {
-        stageEl.scrollIntoView({ block: "center", behavior: "auto" });
-        return;
-      }
-      const el = chapterRefs.current.get(chId);
-      if (el) el.scrollIntoView({ block: "start", behavior: "auto" });
-    });
+    setOpenChapterId(chapterIdForStage(target));
+    autoPickedRef.current = true;
   }, [progress, resumeStageId, nextStageId]);
 
   const toggleChapter = (id: number) => {
@@ -335,10 +316,6 @@ export default function StageSelect({
                       isNext={nextStageId === s.id}
                       isDaily={dailyStageId === s.id}
                       onPlay={onPlay}
-                      cardRef={(el) => {
-                        if (el) stageRefs.current.set(s.id, el);
-                        else stageRefs.current.delete(s.id);
-                      }}
                       onLockedTap={(stageId) => {
                         const unlockedUpTo = progress?.unlockedUpTo ?? 1;
                         showToast(
@@ -823,7 +800,6 @@ function StageCard({
   isDaily,
   onPlay,
   onLockedTap,
-  cardRef,
 }: {
   stage: Stage;
   progress: Progress | null;
@@ -832,7 +808,6 @@ function StageCard({
   isDaily: boolean;
   onPlay: (s: Stage) => void;
   onLockedTap: (stageId: number) => void;
-  cardRef?: (el: HTMLButtonElement | null) => void;
 }) {
   const sequentiallyUnlocked = progress
     ? stage.id <= progress.unlockedUpTo
@@ -852,7 +827,6 @@ function StageCard({
   return (
     <button
       type="button"
-      ref={cardRef}
       onClick={() => (playable ? onPlay(stage) : onLockedTap(stage.id))}
       className="press-95 relative aspect-square rounded-xl overflow-hidden text-left"
       style={{

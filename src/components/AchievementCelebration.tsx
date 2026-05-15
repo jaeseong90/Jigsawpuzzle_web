@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import type { Achievement } from "@/data/achievements";
 import { pulse } from "@/lib/haptics";
+import { useBackButton } from "@/lib/backNav";
 
 type Props = {
   achievement: Achievement | null;
@@ -20,6 +21,8 @@ export default function AchievementCelebration({
     if (!achievement) return;
     pulse("hint");
   }, [achievement]);
+
+  useBackButton(!!achievement, onClose);
 
   if (!achievement) return null;
 

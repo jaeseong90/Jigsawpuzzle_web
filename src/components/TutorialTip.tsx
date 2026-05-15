@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { hasSeenTutorial, markTutorialSeen } from "@/lib/progress";
+import { useBackButton } from "@/lib/backNav";
 
 export default function TutorialTip() {
   const [visible, setVisible] = useState(false);
@@ -11,12 +12,14 @@ export default function TutorialTip() {
     if (!hasSeenTutorial()) setVisible(true);
   }, []);
 
-  if (!visible) return null;
-
   const dismiss = () => {
     markTutorialSeen();
     setVisible(false);
   };
+
+  useBackButton(visible, dismiss);
+
+  if (!visible) return null;
 
   return (
     <div

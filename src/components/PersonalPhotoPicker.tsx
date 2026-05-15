@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { imageFileToDataUrl } from "@/lib/personalPhoto";
 import { addPersonalPhoto } from "@/lib/personalLibrary";
+import { useBackButton } from "@/lib/backNav";
 
 type PieceChoice = { rows: number; cols: number; label: string; pieces: number };
 
@@ -34,6 +35,12 @@ export default function PersonalPhotoPicker({ open, onClose, onStart }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [choiceIdx, setChoiceIdx] = useState(2);
   const [rotate, setRotate] = useState(false);
+
+  // Back press from the picker dismisses to the previous screen. If the user
+  // already picked a photo and is on the config step, back returns to the
+  // photo-pick step instead of closing.
+  useBackButton(open && !!imageSrc, () => setImageSrc(null));
+  useBackButton(open && !imageSrc, onClose);
 
   useEffect(() => {
     if (!open) return;

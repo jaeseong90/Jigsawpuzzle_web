@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import type { StreakTier } from "@/lib/dailyRewards";
 import { pulse } from "@/lib/haptics";
+import { useBackButton } from "@/lib/backNav";
 
 type Props = {
   tier: StreakTier | null;
@@ -18,6 +19,8 @@ export default function StreakCelebration({ tier, onClose }: Props) {
     if (!tier) return;
     pulse("solve");
   }, [tier]);
+
+  useBackButton(!!tier, onClose);
 
   if (!tier) return null;
 

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { loadDailyHistory, type DailyHistory } from "@/lib/dailyHistory";
 import { getDailyStageId, getTodayKey, loadDaily } from "@/lib/daily";
 import { currentTier } from "@/lib/dailyRewards";
+import { useBackButton } from "@/lib/backNav";
 
 type Props = {
   open: boolean;
@@ -21,6 +22,8 @@ export default function DailyCalendar({ open, onClose }: Props) {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
   });
+
+  useBackButton(open, onClose);
 
   useEffect(() => {
     if (!open) return;

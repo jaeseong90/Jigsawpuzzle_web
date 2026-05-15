@@ -27,6 +27,7 @@ import StatsCard from "./StatsCard";
 import StatsScreen from "./StatsScreen";
 import PhotoGallery from "./PhotoGallery";
 import DailyCalendar from "./DailyCalendar";
+import { useBackButton } from "@/lib/backNav";
 
 const TUTORIAL_SEEN_KEY = "jigsaw:tutorial-seen";
 
@@ -78,6 +79,13 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+
+  // Back press unwinds reset confirmation first, then closes the sheet.
+  // Nested sheets (gallery/calendar/stats) own their own back handlers.
+  const sheetCloseActive =
+    open && !confirming && !galleryOpen && !calendarOpen && !statsOpen;
+  useBackButton(open && confirming, () => setConfirming(false));
+  useBackButton(sheetCloseActive, onClose);
 
   useEffect(() => {
     if (!open) return;

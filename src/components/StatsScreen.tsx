@@ -18,6 +18,7 @@ import {
   tesseraBalance,
 } from "@/lib/cosmetics";
 import AchievementsRow from "./AchievementsRow";
+import { useBackButton } from "@/lib/backNav";
 
 type Props = {
   open: boolean;
@@ -32,6 +33,8 @@ export default function StatsScreen({ open, onClose }: Props) {
   const [daily, setDaily] = useState<DailyRecord | null>(null);
   const [events, setEvents] = useState<ClearEvent[]>([]);
   const [personalCount, setPersonalCount] = useState(0);
+
+  useBackButton(open, onClose);
 
   useEffect(() => {
     if (!open) return;

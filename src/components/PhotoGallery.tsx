@@ -14,6 +14,7 @@ import {
   listPersonalSavedGames,
   type PersonalSavedSnapshot,
 } from "@/lib/personalSavedGame";
+import { useBackButton } from "@/lib/backNav";
 
 type Tab = "stages" | "personal";
 
@@ -48,6 +49,11 @@ export default function PhotoGallery({
   );
   const [focusedPersonal, setFocusedPersonal] =
     useState<PersonalPhoto | null>(null);
+
+  // Back press dismisses the focused-photo overlays first, then the gallery.
+  useBackButton(open && !!focused, () => setFocused(null));
+  useBackButton(open && !!focusedPersonal, () => setFocusedPersonal(null));
+  useBackButton(open && !focused && !focusedPersonal, onClose);
 
   useEffect(() => {
     if (!open) return;

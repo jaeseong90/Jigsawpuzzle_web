@@ -105,6 +105,10 @@ export default function PuzzleBoard(props: Props) {
     return () => window.clearTimeout(t);
   }, [showIntro]);
 
+  // Skip the intro reveal on back press so the player isn't forced to
+  // wait out the timer just to abort.
+  useBackButton(showIntro, () => setShowIntro(false));
+
   useEffect(() => {
     const img = new Image();
     img.onload = () => {
@@ -571,9 +575,13 @@ function Board({
   // Explicit pause (independent from visibilitychange).
   const [manualPaused, setManualPaused] = useState(false);
 
-  // Back press in pause overlay resumes the puzzle instead of bubbling up
-  // to the parent's "return to menu" handler.
+  // Back press inside the puzzle dismisses transient overlays first
+  // (preview, reshuffle confirmation, pause), then the solve modal, before
+  // bubbling up to the parent's "return to menu" handler.
+  useBackButton(showPreview, () => setShowPreview(false));
+  useBackButton(reshuffleConfirming, () => setReshuffleConfirming(false));
   useBackButton(manualPaused, () => setManualPaused(false));
+  useBackButton(showSolveModal, () => setShowSolveModal(false));
 
   const dragOffsetRef = useRef<{
     ox: number;
