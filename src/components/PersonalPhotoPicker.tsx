@@ -168,6 +168,19 @@ export default function PersonalPhotoPicker({ open, onClose, onStart }: Props) {
                 className="absolute inset-0 w-full h-full object-cover"
                 decoding="async"
               />
+              <div
+                className="pointer-events-none absolute inset-0"
+                aria-hidden
+                style={{
+                  backgroundImage: `
+                    linear-gradient(to right, rgba(255,255,255,0.32) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255,255,255,0.32) 1px, transparent 1px)
+                  `,
+                  backgroundSize: `${100 / choice.cols}% ${100 / choice.rows}%`,
+                  mixBlendMode: "screen",
+                  transition: "background-size 220ms ease",
+                }}
+              />
               <button
                 type="button"
                 onClick={() => setImageSrc(null)}
