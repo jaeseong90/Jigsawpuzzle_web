@@ -896,11 +896,37 @@ function StageCard({
         </div>
       )}
       {stage.isBoss && playable && !cleared && (
-        <div
-          className="absolute top-1 right-1 rounded-sm px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em]"
-          style={{ background: "var(--danger)", color: "#fff" }}
-        >
-          BOSS
+        <div className="absolute top-1 right-1 flex flex-col items-end gap-0.5">
+          <div
+            className="rounded-sm px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em]"
+            style={{ background: "var(--danger)", color: "#fff" }}
+          >
+            BOSS
+          </div>
+          {stage.bossConstraints?.noPreview && (
+            <div
+              className="rounded-sm px-1 py-px text-[8px] font-bold tracking-[0.1em]"
+              style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}
+            >
+              미리보기 없음
+            </div>
+          )}
+          {!stage.bossConstraints?.noPreview && stage.bossConstraints?.bwPreview && (
+            <div
+              className="rounded-sm px-1 py-px text-[8px] font-bold tracking-[0.1em]"
+              style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}
+            >
+              흑백
+            </div>
+          )}
+          {stage.bossConstraints?.parMultiplier && stage.bossConstraints.parMultiplier < 1 && (
+            <div
+              className="rounded-sm px-1 py-px text-[8px] font-bold tracking-[0.1em]"
+              style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}
+            >
+              시간 −{Math.round((1 - stage.bossConstraints.parMultiplier) * 100)}%
+            </div>
+          )}
         </div>
       )}
       {mastered && (
