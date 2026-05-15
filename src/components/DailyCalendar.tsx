@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { loadDailyHistory, type DailyHistory } from "@/lib/dailyHistory";
 import { getDailyStageId, getTodayKey, loadDaily } from "@/lib/daily";
+import { currentTier } from "@/lib/dailyRewards";
 
 type Props = {
   open: boolean;
@@ -15,6 +16,7 @@ type Props = {
 export default function DailyCalendar({ open, onClose }: Props) {
   const [history, setHistory] = useState<DailyHistory>({});
   const [todayCleared, setTodayCleared] = useState(false);
+  const [bestStreak, setBestStreak] = useState(0);
   const [cursor, setCursor] = useState<{ year: number; month: number }>(() => {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
@@ -26,6 +28,7 @@ export default function DailyCalendar({ open, onClose }: Props) {
     setHistory(loadDailyHistory());
     const daily = loadDaily();
     setTodayCleared(daily.cleared && daily.date === getTodayKey());
+    setBestStreak(daily.bestStreak);
   }, [open]);
 
   const grid = useMemo(() => buildMonthGrid(cursor.year, cursor.month), [cursor]);
@@ -101,10 +104,27 @@ export default function DailyCalendar({ open, onClose }: Props) {
             ‹
           </button>
           <div
-            className="text-[11px] font-semibold tabular-nums"
+            className="text-[11px] font-semibold tabular-nums flex items-center gap-1.5"
             style={{ color: "var(--ink-mute)" }}
           >
-            이번 달 {monthClears}일 · 연속 {streakNow}일
+            {(() => {
+              const tier = currentTier(streakNow);
+              return (
+                <>
+                  이번 달 {monthClears}일 · 연속 {streakNow}일
+                  {tier && (
+                    <span aria-hidden style={{ color: "var(--gold)" }}>
+                      {tier.flair}
+                    </span>
+                  )}
+                  {bestStreak > streakNow && (
+                    <span style={{ color: "var(--ink-faint)" }}>
+                      · 최고 {bestStreak}일
+                    </span>
+                  )}
+                </>
+              );
+            })()}
           </div>
           <button
             type="button"
