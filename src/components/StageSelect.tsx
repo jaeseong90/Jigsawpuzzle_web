@@ -339,6 +339,10 @@ export default function StageSelect({
           setGalleryOpen(false);
           onPersonal(opts);
         }}
+        onAddPersonal={() => {
+          setGalleryOpen(false);
+          setPersonalOpen(true);
+        }}
       />
       <PersonalPhotoPicker
         open={personalOpen}

@@ -26,6 +26,7 @@ type Props = {
     rotate: boolean;
     photoId: string;
   }) => void;
+  onAddPersonal?: () => void;
 };
 
 // A masonry-ish gallery of stages the player has cleared. Adults love
@@ -35,6 +36,7 @@ export default function PhotoGallery({
   open,
   onClose,
   onPersonalReplay,
+  onAddPersonal,
 }: Props) {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [focused, setFocused] = useState<Stage | null>(null);
@@ -159,7 +161,12 @@ export default function PhotoGallery({
         ) : personal.length === 0 ? (
           <EmptyState
             title="저장된 내 사진이 없어요"
-            hint="홈에서 + 버튼을 눌러 내 사진으로 퍼즐을 만들어 보세요."
+            hint="갤러리 사진을 골라 나만의 퍼즐을 만들어 보세요."
+            cta={
+              onAddPersonal
+                ? { label: "사진 가져오기", onClick: onAddPersonal }
+                : undefined
+            }
           />
         ) : (
           <div
@@ -234,7 +241,15 @@ function TabButton({
   );
 }
 
-function EmptyState({ title, hint }: { title: string; hint: string }) {
+function EmptyState({
+  title,
+  hint,
+  cta,
+}: {
+  title: string;
+  hint: string;
+  cta?: { label: string; onClick: () => void };
+}) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
       <div
@@ -246,6 +261,19 @@ function EmptyState({ title, hint }: { title: string; hint: string }) {
       <div className="mt-1 text-sm" style={{ color: "var(--ink-mute)" }}>
         {hint}
       </div>
+      {cta && (
+        <button
+          type="button"
+          onClick={cta.onClick}
+          className="press-95 mt-5 rounded-full px-5 py-2.5 text-sm font-semibold"
+          style={{
+            background: "var(--accent)",
+            color: "var(--accent-fg)",
+          }}
+        >
+          {cta.label}
+        </button>
+      )}
     </div>
   );
 }
