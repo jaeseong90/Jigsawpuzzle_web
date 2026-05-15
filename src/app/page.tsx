@@ -42,6 +42,7 @@ import {
   type StreakTier,
 } from "@/lib/dailyRewards";
 import StreakCelebration from "@/components/StreakCelebration";
+import { recordClearEvent } from "@/lib/playEvents";
 
 type View =
   | { kind: "menu" }
@@ -233,6 +234,16 @@ export default function Home() {
       { advanceUnlock, difficulty, xpEarned }
     );
     setProgress(next);
+
+    recordClearEvent({
+      ts: Date.now(),
+      stageId: baseStage.id,
+      durationMs,
+      stars,
+      isDaily,
+      isBoss: !!baseStage.isBoss,
+      difficulty,
+    });
 
     if (milestone) setPendingMilestone(milestone);
   };

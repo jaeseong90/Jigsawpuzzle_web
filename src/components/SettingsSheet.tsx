@@ -14,6 +14,7 @@ import {
   type Difficulty,
 } from "@/lib/difficulty";
 import StatsCard from "./StatsCard";
+import StatsScreen from "./StatsScreen";
 import PhotoGallery from "./PhotoGallery";
 import DailyCalendar from "./DailyCalendar";
 
@@ -61,6 +62,7 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
   const [shareToast, setShareToast] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -137,7 +139,20 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
         </div>
 
         <div className="mt-4 space-y-3">
-          <StatsCard />
+          <button
+            type="button"
+            onClick={() => setStatsOpen(true)}
+            className="press-95 w-full text-left rounded-xl"
+            aria-label="자세한 통계 보기"
+          >
+            <StatsCard />
+            <div
+              className="mt-1 text-[11px] text-right pr-1"
+              style={{ color: "var(--ink-mute)" }}
+            >
+              자세히 보기 ›
+            </div>
+          </button>
 
           <Row label="모양" hint="테마">
             <ThemeToggle value={theme} onChange={(t) => {
@@ -312,6 +327,7 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
 
       <PhotoGallery open={galleryOpen} onClose={() => setGalleryOpen(false)} />
       <DailyCalendar open={calendarOpen} onClose={() => setCalendarOpen(false)} />
+      <StatsScreen open={statsOpen} onClose={() => setStatsOpen(false)} />
     </div>
   );
 }
