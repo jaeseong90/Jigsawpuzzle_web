@@ -17,6 +17,11 @@ import {
   type SavedGameSnapshot,
 } from "@/lib/savedGame";
 import {
+  clearPersonalGame,
+  loadPersonalGame,
+  savePersonalGame,
+} from "@/lib/personalSavedGame";
+import {
   playGroupMerge,
   playHint,
   playLockIn,
@@ -50,6 +55,7 @@ type Props = {
   isBoss?: boolean;
   stageLabel?: string;
   stageId?: number;
+  personalId?: string;
   totalStages?: number;
   parTimeMs?: number;
   previousBestMs?: number;
@@ -74,6 +80,7 @@ export default function PuzzleBoard(props: Props) {
     if (typeof window === "undefined") return false;
     if (!props.isBoss && !props.isDaily) return false;
     if (props.stageId != null && loadGameFor(props.stageId)) return false;
+    if (props.personalId && loadPersonalGame(props.personalId)) return false;
     return true;
   });
 
@@ -143,6 +150,7 @@ export default function PuzzleBoard(props: Props) {
             boardSize={boardSize}
             isBoss={props.isBoss}
             stageId={props.stageId}
+            personalId={props.personalId}
             stageLabel={props.stageLabel}
             parTimeMs={props.parTimeMs}
             previousBestMs={props.previousBestMs}
@@ -161,7 +169,6 @@ export default function PuzzleBoard(props: Props) {
           <IntroReveal
             imageSrc={imageSrc}
             isBoss={!!props.isBoss}
-            isDaily={!!props.isDaily}
             stageLabel={props.stageLabel}
             onSkip={() => setShowIntro(false)}
           />
@@ -174,13 +181,11 @@ export default function PuzzleBoard(props: Props) {
 function IntroReveal({
   imageSrc,
   isBoss,
-  isDaily,
   stageLabel,
   onSkip,
 }: {
   imageSrc: string;
   isBoss: boolean;
-  isDaily: boolean;
   stageLabel?: string;
   onSkip: () => void;
 }) {
@@ -329,6 +334,7 @@ type BoardProps = {
   boardSize: { w: number; h: number };
   isBoss?: boolean;
   stageId?: number;
+  personalId?: string;
   stageLabel?: string;
   parTimeMs?: number;
   previousBestMs?: number;
@@ -350,27 +356,34 @@ type InitialBoardState = {
 
 function initialBoardState(
   stageId: number | undefined,
+  personalId: string | undefined,
   rows: number,
   cols: number,
   initialHints: number,
   rotateMode: boolean
 ): InitialBoardState {
-  if (stageId != null) {
-    const saved: SavedGameSnapshot | null = loadGameFor(stageId);
-    if (saved && saved.pieces.length === rows * cols) {
-      return {
-        pieces: saved.pieces.map((p) => ({
-          id: p.id,
-          origRow: p.origRow,
-          origCol: p.origCol,
-          currentIndex: p.currentIndex,
-          rotation: ((p.rotation ?? 0) % 4) as Rotation,
-        })),
-        elapsedMs: saved.elapsedMs,
-        hintsLeft: saved.hintsLeft,
-        hintsUsed: saved.hintsUsed,
-      };
-    }
+  let saved:
+    | SavedGameSnapshot
+    | { pieces: SavedGameSnapshot["pieces"]; elapsedMs: number; hintsLeft: number; hintsUsed: number }
+    | null = null;
+  if (personalId) {
+    saved = loadPersonalGame(personalId);
+  } else if (stageId != null) {
+    saved = loadGameFor(stageId);
+  }
+  if (saved && saved.pieces.length === rows * cols) {
+    return {
+      pieces: saved.pieces.map((p) => ({
+        id: p.id,
+        origRow: p.origRow,
+        origCol: p.origCol,
+        currentIndex: p.currentIndex,
+        rotation: ((p.rotation ?? 0) % 4) as Rotation,
+      })),
+      elapsedMs: saved.elapsedMs,
+      hintsLeft: saved.hintsLeft,
+      hintsUsed: saved.hintsUsed,
+    };
   }
   return {
     pieces: buildShuffledPieces(rows, cols, rotateMode),
@@ -446,6 +459,7 @@ function Board({
   boardSize,
   isBoss,
   stageId,
+  personalId,
   stageLabel,
   parTimeMs,
   previousBestMs,
@@ -461,7 +475,7 @@ function Board({
 
   const initialHints = isBoss ? 2 : 3;
   const [initial] = useState<InitialBoardState>(() =>
-    initialBoardState(stageId, rows, cols, initialHints, !!rotateMode)
+    initialBoardState(stageId, personalId, rows, cols, initialHints, !!rotateMode)
   );
 
   const [pieces, setPieces] = useState<Piece[]>(initial.pieces);
@@ -548,23 +562,38 @@ function Board({
   }, [solved]);
 
   useEffect(() => {
-    if (stageId == null || solved) return;
+    if (solved) return;
+    if (stageId == null && !personalId) return;
     const effectiveStop = pausedAt ?? Date.now();
     const elapsedMs = Math.max(0, effectiveStop - startedAt - pausedTotal);
-    saveGame({
-      stageId,
-      pieces: pieces.map((p) => ({
-        id: p.id,
-        origRow: p.origRow,
-        origCol: p.origCol,
-        currentIndex: p.currentIndex,
-        rotation: p.rotation,
-      })),
-      elapsedMs,
-      hintsLeft,
-      hintsUsed,
-    });
-  }, [pieces, hintsLeft, hintsUsed, startedAt, pausedTotal, pausedAt, stageId, solved]);
+    const pieceSnapshot = pieces.map((p) => ({
+      id: p.id,
+      origRow: p.origRow,
+      origCol: p.origCol,
+      currentIndex: p.currentIndex,
+      rotation: p.rotation,
+    }));
+    if (personalId) {
+      savePersonalGame({
+        photoId: personalId,
+        rows,
+        cols,
+        rotate: !!rotateMode,
+        pieces: pieceSnapshot,
+        elapsedMs,
+        hintsLeft,
+        hintsUsed,
+      });
+    } else if (stageId != null) {
+      saveGame({
+        stageId,
+        pieces: pieceSnapshot,
+        elapsedMs,
+        hintsLeft,
+        hintsUsed,
+      });
+    }
+  }, [pieces, hintsLeft, hintsUsed, startedAt, pausedTotal, pausedAt, stageId, personalId, rows, cols, rotateMode, solved]);
 
   const snapshotStateRef = useRef({
     pieces,
@@ -584,58 +613,63 @@ function Board({
       pausedAt,
     };
   });
-  useEffect(() => {
-    if (stageId == null || solved) return;
-    const id = window.setInterval(() => {
-      const s = snapshotStateRef.current;
-      const effectiveStop = s.pausedAt ?? Date.now();
-      const elapsedMs = Math.max(0, effectiveStop - s.startedAt - s.pausedTotal);
-      saveGame({
-        stageId,
-        pieces: s.pieces.map((p) => ({
-          id: p.id,
-          origRow: p.origRow,
-          origCol: p.origCol,
-          currentIndex: p.currentIndex,
-          rotation: p.rotation,
-        })),
+  const persistSnapshot = useCallback(() => {
+    const s = snapshotStateRef.current;
+    if (s.pieces.length === 0) return;
+    const effectiveStop = s.pausedAt ?? Date.now();
+    const elapsedMs = Math.max(0, effectiveStop - s.startedAt - s.pausedTotal);
+    const pieceSnapshot = s.pieces.map((p) => ({
+      id: p.id,
+      origRow: p.origRow,
+      origCol: p.origCol,
+      currentIndex: p.currentIndex,
+      rotation: p.rotation,
+    }));
+    if (personalId) {
+      savePersonalGame({
+        photoId: personalId,
+        rows,
+        cols,
+        rotate: !!rotateMode,
+        pieces: pieceSnapshot,
         elapsedMs,
         hintsLeft: s.hintsLeft,
         hintsUsed: s.hintsUsed,
       });
-    }, 10000);
+    } else if (stageId != null) {
+      saveGame({
+        stageId,
+        pieces: pieceSnapshot,
+        elapsedMs,
+        hintsLeft: s.hintsLeft,
+        hintsUsed: s.hintsUsed,
+      });
+    }
+  }, [personalId, stageId, rows, cols, rotateMode]);
+
+  useEffect(() => {
+    if (solved) return;
+    if (stageId == null && !personalId) return;
+    const id = window.setInterval(persistSnapshot, 10000);
     return () => window.clearInterval(id);
-  }, [stageId, solved]);
+  }, [stageId, personalId, solved, persistSnapshot]);
 
   useEffect(() => {
     const onVis = () => {
-      if (!document.hidden || stageId == null || solved) return;
-      const s = snapshotStateRef.current;
-      const effectiveStop = s.pausedAt ?? Date.now();
-      const elapsedMs = Math.max(0, effectiveStop - s.startedAt - s.pausedTotal);
-      saveGame({
-        stageId,
-        pieces: s.pieces.map((p) => ({
-          id: p.id,
-          origRow: p.origRow,
-          origCol: p.origCol,
-          currentIndex: p.currentIndex,
-          rotation: p.rotation,
-        })),
-        elapsedMs,
-        hintsLeft: s.hintsLeft,
-        hintsUsed: s.hintsUsed,
-      });
+      if (!document.hidden || solved) return;
+      if (stageId == null && !personalId) return;
+      persistSnapshot();
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, [stageId, solved]);
+  }, [stageId, personalId, solved, persistSnapshot]);
 
   useEffect(() => {
     if (!solved) return;
-    if (stageId != null) clearSavedGameFor(stageId);
+    if (personalId) clearPersonalGame(personalId);
+    else if (stageId != null) clearSavedGameFor(stageId);
     else clearSavedGame();
-  }, [solved, stageId]);
+  }, [solved, stageId, personalId]);
 
   const pieceW = boardSize.w / cols;
   const pieceH = boardSize.h / rows;
@@ -853,7 +887,8 @@ function Board({
       reshuffleTimerRef.current = null;
     }
     setReshuffleConfirming(false);
-    if (stageId != null) clearSavedGameFor(stageId);
+    if (personalId) clearPersonalGame(personalId);
+    else if (stageId != null) clearSavedGameFor(stageId);
     setPieces(buildShuffledPieces(rows, cols, !!rotateMode));
     setStartedAt(Date.now());
     setNow(Date.now());
@@ -869,7 +904,7 @@ function Board({
     setFlowBest(0);
     setSolved(false);
     setShowSolveModal(false);
-  }, [rows, cols, initialHints, initialUndos, rotateMode, stageId]);
+  }, [rows, cols, initialHints, initialUndos, rotateMode, stageId, personalId]);
 
   const undo = useCallback(() => {
     if (solved || undosLeft <= 0 || history.length === 0 || pausedAt != null) return;
@@ -902,7 +937,8 @@ function Board({
       reshuffleTimerRef.current = null;
     }
     setReshuffleConfirming(false);
-    if (stageId != null) clearSavedGameFor(stageId);
+    if (personalId) clearPersonalGame(personalId);
+    else if (stageId != null) clearSavedGameFor(stageId);
     setPieces(buildShuffledPieces(rows, cols, !!rotateMode));
     setStartedAt(Date.now());
     setPausedTotal(0);
@@ -915,7 +951,7 @@ function Board({
     setMoveCount(0);
     setFlowCount(0);
     setFlowBest(0);
-  }, [rows, cols, solved, initialHints, initialUndos, reshuffleConfirming, rotateMode, stageId]);
+  }, [rows, cols, solved, initialHints, initialUndos, reshuffleConfirming, rotateMode, stageId, personalId]);
 
   const flowActive = flowCount >= 2;
 

@@ -162,6 +162,7 @@ export default function Home() {
           imageSrc={view.imageSrc}
           rows={view.rows}
           cols={view.cols}
+          personalId={view.photoId}
           stageLabel="내 사진"
           parTimeMs={view.rows * view.cols * 5500}
           difficulty={view.rotate ? "master" : "standard"}

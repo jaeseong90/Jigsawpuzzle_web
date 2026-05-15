@@ -9,6 +9,10 @@ import {
   listPersonalPhotos,
   type PersonalPhoto,
 } from "@/lib/personalLibrary";
+import {
+  clearPersonalGame,
+  listPersonalSavedGames,
+} from "@/lib/personalSavedGame";
 
 type Tab = "stages" | "personal";
 
@@ -36,6 +40,7 @@ export default function PhotoGallery({
   const [focused, setFocused] = useState<Stage | null>(null);
   const [tab, setTab] = useState<Tab>("stages");
   const [personal, setPersonal] = useState<PersonalPhoto[]>([]);
+  const [resumableIds, setResumableIds] = useState<Set<string>>(new Set());
   const [focusedPersonal, setFocusedPersonal] =
     useState<PersonalPhoto | null>(null);
 
@@ -46,6 +51,9 @@ export default function PhotoGallery({
     setFocused(null);
     setFocusedPersonal(null);
     listPersonalPhotos().then(setPersonal).catch(() => setPersonal([]));
+    setResumableIds(
+      new Set(listPersonalSavedGames().map((g) => g.photoId))
+    );
   }, [open]);
 
   const cleared = useMemo(() => {
@@ -56,8 +64,15 @@ export default function PhotoGallery({
   if (!open) return null;
 
   const handleDelete = async (id: string) => {
+    clearPersonalGame(id);
     await deletePersonalPhoto(id);
     setPersonal((prev) => prev.filter((p) => p.id !== id));
+    setResumableIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     setFocusedPersonal(null);
   };
 
@@ -155,6 +170,7 @@ export default function PhotoGallery({
               <PersonalTile
                 key={p.id}
                 photo={p}
+                resumable={resumableIds.has(p.id)}
                 onTap={() => setFocusedPersonal(p)}
               />
             ))}
@@ -174,6 +190,7 @@ export default function PhotoGallery({
       {focusedPersonal && (
         <FocusedPersonal
           photo={focusedPersonal}
+          resumable={resumableIds.has(focusedPersonal.id)}
           onClose={() => setFocusedPersonal(null)}
           onReplay={
             onPersonalReplay
@@ -293,9 +310,11 @@ function GalleryTile({
 
 function PersonalTile({
   photo,
+  resumable,
   onTap,
 }: {
   photo: PersonalPhoto;
+  resumable: boolean;
   onTap: () => void;
 }) {
   const [loaded, setLoaded] = useState(false);
@@ -320,17 +339,30 @@ function PersonalTile({
           className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
           style={{ opacity: loaded ? 1 : 0 }}
         />
-        {photo.completions > 0 && (
+        {resumable ? (
           <span
             className="absolute top-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold"
             style={{
-              background: "var(--success-soft)",
-              color: "var(--success)",
+              background: "var(--accent)",
+              color: "var(--accent-fg)",
               letterSpacing: "0.08em",
             }}
           >
-            CLEAR
+            이어하기
           </span>
+        ) : (
+          photo.completions > 0 && (
+            <span
+              className="absolute top-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold"
+              style={{
+                background: "var(--success-soft)",
+                color: "var(--success)",
+                letterSpacing: "0.08em",
+              }}
+            >
+              CLEAR
+            </span>
+          )
         )}
       </div>
       <div className="px-2 py-1.5 flex items-center justify-between">
@@ -422,11 +454,13 @@ function FocusedPhoto({
 
 function FocusedPersonal({
   photo,
+  resumable,
   onClose,
   onReplay,
   onDelete,
 }: {
   photo: PersonalPhoto;
+  resumable: boolean;
   onClose: () => void;
   onReplay?: (opts: {
     imageSrc: string;
@@ -510,7 +544,7 @@ function FocusedPersonal({
                   color: "var(--accent-fg)",
                 }}
               >
-                다시 풀기
+                {resumable ? "이어하기" : "다시 풀기"}
               </button>
             )}
             <button
