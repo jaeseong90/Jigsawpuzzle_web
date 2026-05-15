@@ -153,6 +153,8 @@ export default function StageSelect({
   const handleResetProgress = () => {
     setProgress(emptyProgress());
     setResumeStageIds([]);
+    autoPickedRef.current = false;
+    setOpenChapterId(1);
   };
 
   return (
