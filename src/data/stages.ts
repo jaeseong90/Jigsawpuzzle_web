@@ -1,9 +1,20 @@
+export type BossConstraints = {
+  // Preview overlay renders desaturated — you still see the shape but
+  // color cues are stripped.
+  bwPreview?: boolean;
+  // Preview tool is disabled entirely for this boss.
+  noPreview?: boolean;
+  // Par-time multiplier <1 makes 3-star harder for this boss.
+  parMultiplier?: number;
+};
+
 export type Stage = {
   id: number;
   rows: number;
   cols: number;
   isBoss: boolean;
   title: string;
+  bossConstraints?: BossConstraints;
 };
 
 const TOTAL_STAGES = 999;
@@ -137,6 +148,34 @@ function chapterForStageRaw(stageId: number): {
   };
 }
 
+// Per-chapter boss constraint profile. Each chapter ramps the boss
+// experience instead of just enlarging the grid — chapter 2 desaturates
+// the preview, chapter 10 hides it entirely AND tightens par.
+const BOSS_PROFILE_BY_CHAPTER: ReadonlyArray<BossConstraints> = [
+  {}, // 1: 정원 — warmup, no constraints
+  { bwPreview: true }, // 2: 수면
+  { parMultiplier: 0.78 }, // 3: 도시
+  { bwPreview: true }, // 4: 여행
+  { noPreview: true }, // 5: 정물
+  { parMultiplier: 0.78 }, // 6: 황혼
+  { bwPreview: true, parMultiplier: 0.78 }, // 7: 원경
+  { noPreview: true }, // 8: 건축
+  { bwPreview: true, parMultiplier: 0.72 }, // 9: 야경
+  { noPreview: true, parMultiplier: 0.72 }, // 10: 광장 — the final exam
+];
+
+function bossConstraintsFor(stageId: number): BossConstraints | undefined {
+  const chapterIdx = Math.min(
+    BOSS_PROFILE_BY_CHAPTER.length,
+    Math.max(1, Math.ceil(stageId / 100))
+  );
+  const profile = BOSS_PROFILE_BY_CHAPTER[chapterIdx - 1];
+  if (!profile) return undefined;
+  // Keep undefined when there are no constraints so the field stays
+  // truly optional in callers' equality checks.
+  return Object.keys(profile).length > 0 ? profile : undefined;
+}
+
 function buildStages(): Stage[] {
   const list: Stage[] = [];
   for (let id = 1; id <= TOTAL_STAGES; id++) {
@@ -148,6 +187,9 @@ function buildStages(): Stage[] {
       cols,
       isBoss,
       title: titleForStage(id, isBoss),
+      ...(isBoss
+        ? { bossConstraints: bossConstraintsFor(id) }
+        : {}),
     });
   }
   return list;
@@ -222,7 +264,9 @@ function msPerPiece(stage: Stage): number {
 }
 
 export function parTimeMs(stage: Stage): number {
-  return stage.rows * stage.cols * msPerPiece(stage);
+  const base = stage.rows * stage.cols * msPerPiece(stage);
+  const mult = stage.bossConstraints?.parMultiplier ?? 1;
+  return Math.round(base * mult);
 }
 
 export function starsFromTime(stage: Stage, durationMs: number): 1 | 2 | 3 {

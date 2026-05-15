@@ -417,6 +417,7 @@ export default function Home() {
         previousBestMs={previousBestMs}
         isDaily={isDailyStage}
         difficulty={difficulty}
+        bossConstraints={baseStage.bossConstraints}
         hasNext={hasNext}
         onSolved={handleSolved}
         onExit={handleExit}

@@ -66,6 +66,7 @@ type Props = {
   previousBestMs?: number;
   isDaily?: boolean;
   difficulty?: Difficulty;
+  bossConstraints?: import("@/data/stages").BossConstraints;
   zen?: boolean;
   onSolved?: (
     durationMs: number,
@@ -170,6 +171,7 @@ export default function PuzzleBoard(props: Props) {
             isDaily={props.isDaily}
             difficulty={props.difficulty}
             rotateMode={props.difficulty === "master"}
+            bossConstraints={props.bossConstraints}
             zen={props.zen}
             onSolved={props.onSolved}
             onExit={props.onExit}
@@ -184,6 +186,7 @@ export default function PuzzleBoard(props: Props) {
             imageSrc={imageSrc}
             isBoss={!!props.isBoss}
             stageLabel={props.stageLabel}
+            bossConstraints={props.bossConstraints}
             onSkip={() => setShowIntro(false)}
           />
         )}
@@ -196,15 +199,24 @@ function IntroReveal({
   imageSrc,
   isBoss,
   stageLabel,
+  bossConstraints,
   onSkip,
 }: {
   imageSrc: string;
   isBoss: boolean;
   stageLabel?: string;
+  bossConstraints?: import("@/data/stages").BossConstraints;
   onSkip: () => void;
 }) {
   const eyebrow = isBoss ? "Boss" : "Daily";
   const subtitle = isBoss ? "도전이 시작됩니다" : "오늘의 그림";
+  const constraintLabels: string[] = [];
+  if (bossConstraints?.noPreview) constraintLabels.push("미리보기 잠김");
+  else if (bossConstraints?.bwPreview) constraintLabels.push("흑백 미리보기");
+  if (bossConstraints?.parMultiplier && bossConstraints.parMultiplier < 1) {
+    const pct = Math.round((1 - bossConstraints.parMultiplier) * 100);
+    constraintLabels.push(`시간 −${pct}%`);
+  }
   return (
     <button
       type="button"
@@ -264,6 +276,23 @@ function IntroReveal({
         >
           {subtitle}
         </div>
+        {constraintLabels.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+            {constraintLabels.map((label) => (
+              <span
+                key={label}
+                className="rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.08em]"
+                style={{
+                  background: "var(--danger-soft)",
+                  color: "var(--danger)",
+                  border: "1px solid var(--danger)",
+                }}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+        )}
         <div
           className="intro-reveal-progress mt-4 h-1 w-32 rounded-full overflow-hidden"
           style={{ background: "var(--bg-elevated)" }}
@@ -355,6 +384,7 @@ type BoardProps = {
   isDaily?: boolean;
   difficulty?: Difficulty;
   rotateMode?: boolean;
+  bossConstraints?: import("@/data/stages").BossConstraints;
   zen?: boolean;
   onSolved?: (
     durationMs: number,
@@ -486,6 +516,7 @@ function Board({
   isDaily,
   difficulty,
   rotateMode,
+  bossConstraints,
   zen,
   onSolved,
   onExit,
@@ -1040,7 +1071,7 @@ function Board({
           boxShadow: "inset 0 0 0 1px var(--line-soft)",
         }}
       >
-        {showPreview && (
+        {showPreview && !bossConstraints?.noPreview && (
           <div
             className="pointer-events-none absolute inset-0"
             style={{
@@ -1048,6 +1079,7 @@ function Board({
               backgroundSize: "100% 100%",
               backgroundRepeat: "no-repeat",
               opacity: 0.92,
+              filter: bossConstraints?.bwPreview ? "grayscale(1)" : "none",
               zIndex: 50,
             }}
           />
@@ -1158,6 +1190,7 @@ function Board({
         undo={undo}
         showPreview={showPreview}
         togglePreview={() => setShowPreview((v) => !v)}
+        previewDisabled={!!bossConstraints?.noPreview}
         edgeHighlight={edgeHighlight}
         toggleEdge={() => setEdgeHighlight((v) => !v)}
         reshuffleConfirming={reshuffleConfirming}
@@ -1206,6 +1239,7 @@ function Toolbar({
   undo,
   showPreview,
   togglePreview,
+  previewDisabled,
   edgeHighlight,
   toggleEdge,
   reshuffleConfirming,
@@ -1222,6 +1256,7 @@ function Toolbar({
   undo: () => void;
   showPreview: boolean;
   togglePreview: () => void;
+  previewDisabled?: boolean;
   edgeHighlight: boolean;
   toggleEdge: () => void;
   reshuffleConfirming: boolean;
@@ -1253,7 +1288,8 @@ function Toolbar({
       <ToolButton
         onClick={togglePreview}
         active={showPreview}
-        label="미리보기"
+        disabled={previewDisabled}
+        label={previewDisabled ? "미리보기 잠김" : "미리보기"}
         glyph="◐"
       />
       <ToolButton
