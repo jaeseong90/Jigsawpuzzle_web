@@ -260,7 +260,7 @@ function IntroReveal({
           className="mt-3 text-[10px] tracking-[0.16em]"
           style={{ color: "var(--ink-mute)" }}
         >
-          TAP TO SKIP
+          탭하여 시작 · TAP TO START
         </div>
       </div>
     </button>

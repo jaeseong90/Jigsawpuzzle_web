@@ -482,22 +482,37 @@ export default function StatsScreen({ open, onClose }: Props) {
               border: "1px solid var(--line)",
             }}
           >
-            <DiffBar
-              label="릴랙스"
-              count={difficultyBreakdown.relax}
-              color="var(--ink-2)"
-            />
-            <DiffBar
-              label="스탠다드"
-              count={difficultyBreakdown.standard}
-              color="var(--accent)"
-              emphasize
-            />
-            <DiffBar
-              label="마스터"
-              count={difficultyBreakdown.master}
-              color="var(--danger)"
-            />
+            {(() => {
+              const max = Math.max(
+                1,
+                difficultyBreakdown.relax,
+                difficultyBreakdown.standard,
+                difficultyBreakdown.master
+              );
+              return (
+                <>
+                  <DiffBar
+                    label="릴랙스"
+                    count={difficultyBreakdown.relax}
+                    max={max}
+                    color="var(--ink-2)"
+                  />
+                  <DiffBar
+                    label="스탠다드"
+                    count={difficultyBreakdown.standard}
+                    max={max}
+                    color="var(--accent)"
+                    emphasize
+                  />
+                  <DiffBar
+                    label="마스터"
+                    count={difficultyBreakdown.master}
+                    max={max}
+                    color="var(--danger)"
+                  />
+                </>
+              );
+            })()}
           </section>
 
           <div
@@ -708,14 +723,17 @@ function Heatmap({
 function DiffBar({
   label,
   count,
+  max,
   color,
   emphasize,
 }: {
   label: string;
   count: number;
+  max: number;
   color: string;
   emphasize?: boolean;
 }) {
+  const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   return (
     <div className="flex items-center gap-3">
       <div
@@ -732,7 +750,7 @@ function DiffBar({
           className="h-full rounded-full"
           style={{
             background: color,
-            width: `${Math.min(100, count * 8)}%`,
+            width: `${pct}%`,
             opacity: emphasize ? 1 : 0.85,
             transition: "width 360ms cubic-bezier(0.2,0.8,0.2,1)",
           }}
