@@ -295,6 +295,23 @@ body {
   animation: streak-flair-pulse 1.6s ease-in-out infinite;
 }
 
+/* --- chapter shelf reveal ----------------------------------------- */
+
+@keyframes chapter-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chapter-reveal {
+  animation: chapter-reveal 220ms ease-out both;
+}
+
 /* --- intro reveal (boss / daily) ---------------------------------- */
 
 @keyframes intro-reveal-photo-in {

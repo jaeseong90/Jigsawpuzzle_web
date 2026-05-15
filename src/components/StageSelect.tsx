@@ -721,7 +721,7 @@ function ChapterBlock({
       </button>
       {isOpen && (
         <div
-          className="px-3 pb-4"
+          className="chapter-reveal px-3 pb-4"
           style={{ borderTop: "1px solid var(--line-soft)" }}
         >
           {children}
