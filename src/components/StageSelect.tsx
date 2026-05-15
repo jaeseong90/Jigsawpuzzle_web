@@ -28,6 +28,7 @@ type Props = {
     rows: number;
     cols: number;
     rotate: boolean;
+    photoId: string;
   }) => void;
 };
 
@@ -334,6 +335,10 @@ export default function StageSelect({
       <PhotoGallery
         open={galleryOpen}
         onClose={() => setGalleryOpen(false)}
+        onPersonalReplay={(opts) => {
+          setGalleryOpen(false);
+          onPersonal(opts);
+        }}
       />
       <PersonalPhotoPicker
         open={personalOpen}

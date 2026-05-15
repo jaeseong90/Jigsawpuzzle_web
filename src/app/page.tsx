@@ -32,6 +32,10 @@ import {
   type Difficulty,
 } from "@/lib/difficulty";
 import { xpForClear } from "@/lib/level";
+import {
+  recordPersonalCompletion,
+  recordPersonalPlay,
+} from "@/lib/personalLibrary";
 
 type View =
   | { kind: "menu" }
@@ -47,6 +51,7 @@ type View =
       rows: number;
       cols: number;
       rotate: boolean;
+      photoId: string;
     };
 
 export default function Home() {
@@ -110,15 +115,21 @@ export default function Home() {
       <StageSelect
         progressOverride={progress}
         onPlay={launchStage}
-        onPersonal={(opts) =>
+        onPersonal={(opts) => {
+          void recordPersonalPlay(opts.photoId, {
+            rows: opts.rows,
+            cols: opts.cols,
+            rotate: opts.rotate,
+          });
           setView({
             kind: "personal",
             imageSrc: opts.imageSrc,
             rows: opts.rows,
             cols: opts.cols,
             rotate: opts.rotate,
-          })
-        }
+            photoId: opts.photoId,
+          });
+        }}
       />
     );
   }
@@ -126,7 +137,7 @@ export default function Home() {
   if (view.kind === "personal") {
     return (
       <PuzzleBoard
-        key={`personal-${view.rows}x${view.cols}-${view.rotate}`}
+        key={`personal-${view.photoId}-${view.rows}x${view.cols}-${view.rotate}`}
         imageSrc={view.imageSrc}
         rows={view.rows}
         cols={view.cols}
@@ -134,8 +145,8 @@ export default function Home() {
         parTimeMs={view.rows * view.cols * 5500}
         difficulty={view.rotate ? "master" : "standard"}
         hasNext={false}
-        onSolved={() => {
-          /* personal puzzles don't grant XP or affect progress */
+        onSolved={(durationMs) => {
+          void recordPersonalCompletion(view.photoId, durationMs);
         }}
         onExit={() => setView({ kind: "menu" })}
         onNext={() => setView({ kind: "menu" })}

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { imageFileToDataUrl } from "@/lib/personalPhoto";
+import { addPersonalPhoto } from "@/lib/personalLibrary";
 
 type PieceChoice = { rows: number; cols: number; label: string; pieces: number };
 
@@ -22,6 +23,7 @@ type Props = {
     rows: number;
     cols: number;
     rotate: boolean;
+    photoId: string;
   }) => void;
 };
 
@@ -274,14 +276,28 @@ export default function PersonalPhotoPicker({ open, onClose, onStart }: Props) {
 
             <button
               type="button"
-              onClick={() =>
-                onStart({
-                  imageSrc,
-                  rows: choice.rows,
-                  cols: choice.cols,
-                  rotate,
-                })
-              }
+              disabled={loading}
+              onClick={async () => {
+                if (!imageSrc) return;
+                setLoading(true);
+                try {
+                  const entry = await addPersonalPhoto(imageSrc, {
+                    rows: choice.rows,
+                    cols: choice.cols,
+                    rotate,
+                  });
+                  onStart({
+                    imageSrc,
+                    rows: choice.rows,
+                    cols: choice.cols,
+                    rotate,
+                    photoId: entry.id,
+                  });
+                } catch {
+                  setError("사진을 저장하지 못했어요. 다시 시도해 주세요.");
+                  setLoading(false);
+                }
+              }}
               className="press-95 w-full rounded-full py-3 text-sm font-semibold"
               style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
             >
