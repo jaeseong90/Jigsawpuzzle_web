@@ -18,6 +18,7 @@ import dynamic from "next/dynamic";
 import TutorialTip from "./TutorialTip";
 import DailyBanner from "./DailyBanner";
 import LevelChip from "./LevelChip";
+import { useBackButton, useExitGuard } from "@/lib/backNav";
 
 // Modals/overlays are only mounted when the player opens them, so defer
 // their bundle splits to keep first-paint quick on the home shelf.
@@ -84,6 +85,15 @@ export default function StageSelect({
       toastTimerRef.current = null;
     }, 1800);
   };
+
+  // Android back: close whichever sheet is on top first; only when no sheet
+  // is open does the exit guard kick in and require a second press to leave.
+  useBackButton(settingsOpen, () => setSettingsOpen(false));
+  useBackButton(statsOpen, () => setStatsOpen(false));
+  useBackButton(galleryOpen, () => setGalleryOpen(false));
+  useBackButton(personalOpen, () => setPersonalOpen(false));
+  useBackButton(inProgressOpen, () => setInProgressOpen(false));
+  useExitGuard(true, () => showToast("한 번 더 누르면 종료됩니다"));
 
   useEffect(() => {
     if (progressOverride !== undefined) {

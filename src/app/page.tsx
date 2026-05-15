@@ -52,6 +52,7 @@ import {
   type Achievement,
   type AchievementContext,
 } from "@/data/achievements";
+import { useBackButton } from "@/lib/backNav";
 
 type ZenSource =
   | { kind: "stage"; stageId: number }
@@ -100,6 +101,11 @@ export default function Home() {
     installFirstInteractionResume();
     installVisibilityHook();
   }, []);
+
+  // Android back button on any sub-view returns the player to the menu —
+  // matching the expectation that "취소/뒤로" navigates back rather than
+  // closing the app. The menu itself uses an exit guard (see StageSelect).
+  useBackButton(view.kind !== "menu", () => setView({ kind: "menu" }));
 
   // Warm cache for the upcoming stage photo.
   useEffect(() => {

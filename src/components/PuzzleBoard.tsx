@@ -39,6 +39,7 @@ import { pulse } from "@/lib/haptics";
 import type { Difficulty } from "@/lib/difficulty";
 import { getDifficultyMeta } from "@/lib/difficulty";
 import { shareClear, type ShareResult } from "@/lib/shareCard";
+import { useBackButton } from "@/lib/backNav";
 
 type Rotation = 0 | 1 | 2 | 3;
 
@@ -569,6 +570,10 @@ function Board({
   const [edgeHighlight, setEdgeHighlight] = useState(false);
   // Explicit pause (independent from visibilitychange).
   const [manualPaused, setManualPaused] = useState(false);
+
+  // Back press in pause overlay resumes the puzzle instead of bubbling up
+  // to the parent's "return to menu" handler.
+  useBackButton(manualPaused, () => setManualPaused(false));
 
   const dragOffsetRef = useRef<{
     ox: number;
