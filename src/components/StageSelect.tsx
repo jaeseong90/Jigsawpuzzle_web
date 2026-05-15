@@ -54,9 +54,10 @@ export default function StageSelect({
   const toastTimerRef = useRef<number | null>(null);
   const chapterRefs = useRef<Map<number, HTMLElement | null>>(new Map());
   // Only one chapter is open at a time — the home screen reads like a
-  // shelf of chapter "worlds" rather than a 999-stage wall. Initialized
-  // to the chapter that contains the player's next action.
-  const [openChapterId, setOpenChapterId] = useState<number | null>(null);
+  // shelf of chapter "worlds" rather than a 999-stage wall. Default to
+  // chapter 1 immediately so a fresh open doesn't flash an all-collapsed
+  // shelf before the progress-aware effect picks the right one.
+  const [openChapterId, setOpenChapterId] = useState<number | null>(1);
 
   const showToast = (msg: string) => {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -103,22 +104,31 @@ export default function StageSelect({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Track whether we've already auto-picked the chapter for this mount —
+  // user-initiated toggles after that should stick instead of being
+  // overwritten when progress changes (e.g., after a clear).
+  const autoPickedRef = useRef(false);
   useEffect(() => {
     if (!progress) return;
     const target = resumeStageId ?? nextStageId ?? progress.unlockedUpTo;
     const chId = chapterIdForStage(target);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOpenChapterId((prev) => prev ?? chId);
+    if (!autoPickedRef.current) {
+      setOpenChapterId(chId);
+      autoPickedRef.current = true;
+    }
     const el = chapterRefs.current.get(chId);
     if (el) el.scrollIntoView({ block: "start", behavior: "auto" });
   }, [progress, resumeStageId, nextStageId]);
 
   const toggleChapter = (id: number) => {
+    autoPickedRef.current = true;
     setOpenChapterId((prev) => (prev === id ? null : id));
-    window.setTimeout(() => {
-      const el = chapterRefs.current.get(id);
-      if (el) el.scrollIntoView({ block: "start", behavior: "smooth" });
-    }, 30);
+    if (openChapterId !== id) {
+      window.setTimeout(() => {
+        const el = chapterRefs.current.get(id);
+        if (el) el.scrollIntoView({ block: "start", behavior: "smooth" });
+      }, 30);
+    }
   };
 
   const handleResetProgress = () => {
