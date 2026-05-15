@@ -16,7 +16,16 @@ import {
   saveGame,
   type SavedGameSnapshot,
 } from "@/lib/savedGame";
-import { playSnap, playSolve } from "@/lib/sound";
+import {
+  playGroupMerge,
+  playHint,
+  playLockIn,
+  playRotate,
+  playSnap,
+  playSolve,
+  playUndo,
+} from "@/lib/sound";
+import { pulse } from "@/lib/haptics";
 import type { Difficulty } from "@/lib/difficulty";
 import { getDifficultyMeta } from "@/lib/difficulty";
 import { shareClear, type ShareResult } from "@/lib/shareCard";
@@ -723,15 +732,21 @@ function Board({
         groupSize === 1 &&
         headId != null
       ) {
+        let landedAtZero = false;
         setPieces((prev) =>
-          prev.map((p) =>
-            p.id === headId
-              ? { ...p, rotation: (((p.rotation + 1) % 4) as Rotation) }
-              : p
-          )
+          prev.map((p) => {
+            if (p.id !== headId) return p;
+            const nextRotation = (((p.rotation + 1) % 4) as Rotation);
+            if (nextRotation === 0) landedAtZero = true;
+            return { ...p, rotation: nextRotation };
+          })
         );
-        if (typeof navigator !== "undefined" && navigator.vibrate) {
-          navigator.vibrate(8);
+        if (landedAtZero) {
+          playLockIn();
+          pulse("lockIn");
+        } else {
+          playRotate();
+          pulse("rotate");
         }
         return;
       }
@@ -755,17 +770,19 @@ function Board({
           setSolved(true);
           onSolved?.(duration, stars, hintsUsed);
           playSolve();
-          if (typeof navigator !== "undefined" && navigator.vibrate) {
-            navigator.vibrate([20, 40, 80]);
-          }
+          pulse("solve");
         } else {
           const before = countJoinedEdges(prev, rows, cols);
           const after = countJoinedEdges(next, rows, cols);
-          if (after > before) {
-            playSnap();
+          const joined = after - before;
+          if (joined > 0) {
             bumpFlow();
-            if (typeof navigator !== "undefined" && navigator.vibrate) {
-              navigator.vibrate(15);
+            if (joined >= 2) {
+              playGroupMerge();
+              pulse("merge");
+            } else {
+              playSnap();
+              pulse("snap");
             }
           }
         }
@@ -826,7 +843,8 @@ function Board({
     });
     setHintsLeft((h) => h - 1);
     setHintsUsed((h) => h + 1);
-    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(12);
+    playHint();
+    pulse("hint");
   }, [solved, hintsLeft, cols, pausedAt]);
 
   const replay = useCallback(() => {
@@ -864,7 +882,8 @@ function Board({
     setDragHeadId(null);
     setDragDelta({ x: 0, y: 0 });
     setHoverDelta(null);
-    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
+    playUndo();
+    pulse("undo");
   }, [solved, undosLeft, history, pausedAt]);
 
   const reshuffle = useCallback(() => {

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import type { StreakTier } from "@/lib/dailyRewards";
+import { pulse } from "@/lib/haptics";
 
 type Props = {
   tier: StreakTier | null;
@@ -15,13 +16,7 @@ type Props = {
 export default function StreakCelebration({ tier, onClose }: Props) {
   useEffect(() => {
     if (!tier) return;
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      try {
-        navigator.vibrate?.([20, 50, 30, 50, 30]);
-      } catch {
-        /* ignore */
-      }
-    }
+    pulse("solve");
   }, [tier]);
 
   if (!tier) return null;

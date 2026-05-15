@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { clearSavedGame } from "@/lib/savedGame";
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound";
 import { isAmbientEnabled, setAmbientEnabled } from "@/lib/ambient";
+import { isHapticsEnabled, setHapticsEnabled } from "@/lib/haptics";
 import { loadProgress } from "@/lib/progress";
 import { loadTheme, saveTheme, type Theme } from "@/lib/theme";
 import {
@@ -54,6 +55,7 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
   const [confirming, setConfirming] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
   const [ambientOn, setAmbientOn] = useState(false);
+  const [hapticsOn, setHapticsOnState] = useState(true);
   const [theme, setTheme] = useState<Theme>("system");
   const [difficulty, setDifficulty] = useState<Difficulty>("standard");
   const [shareToast, setShareToast] = useState<string | null>(null);
@@ -65,6 +67,7 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSoundOn(isSoundEnabled());
     setAmbientOn(isAmbientEnabled());
+    setHapticsOnState(isHapticsEnabled());
     setTheme(loadTheme());
     setDifficulty(loadDefaultDifficulty());
   }, [open]);
@@ -226,6 +229,16 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
               onChange={(v) => {
                 setAmbientOn(v);
                 setAmbientEnabled(v);
+              }}
+            />
+          </Row>
+
+          <Row label="진동" hint="스냅·회전·완성 시 햅틱">
+            <ToggleSwitch
+              checked={hapticsOn}
+              onChange={(v) => {
+                setHapticsOnState(v);
+                setHapticsEnabled(v);
               }}
             />
           </Row>
