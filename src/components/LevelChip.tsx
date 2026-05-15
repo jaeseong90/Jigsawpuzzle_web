@@ -9,6 +9,7 @@ import {
 import type { Progress } from "@/lib/progress";
 import { loadDaily } from "@/lib/daily";
 import { currentTier, type StreakTier } from "@/lib/dailyRewards";
+import { tesseraBalance } from "@/lib/cosmetics";
 
 type Props = {
   progress: Progress | null;
@@ -26,6 +27,7 @@ export default function LevelChip({ progress, compact, onClick }: Props) {
   const state = deriveLevel(xpFromProgress);
   const pct = Math.round(state.progress * 100);
   const title = titleForLevel(state.level);
+  const tessera = progress ? tesseraBalance(progress) : 0;
 
   const [streak, setStreak] = useState(0);
   const [tier, setTier] = useState<StreakTier | null>(null);
@@ -81,11 +83,25 @@ export default function LevelChip({ progress, compact, onClick }: Props) {
           >
             Level {state.level}
           </div>
-          <div
-            className="text-[10px] font-semibold tabular-nums"
-            style={{ color: "var(--ink-mute)" }}
-          >
-            {state.xpIntoLevel} / {state.xpForNext} XP
+          <div className="flex items-center gap-1.5">
+            {tessera > 0 && (
+              <span
+                className="text-[10px] font-bold tabular-nums rounded-full px-1.5 py-px"
+                style={{
+                  background: "var(--gold-soft)",
+                  color: "var(--gold)",
+                }}
+                aria-label={`테세라 ${tessera}`}
+              >
+                ◆ {tessera.toLocaleString()}
+              </span>
+            )}
+            <div
+              className="text-[10px] font-semibold tabular-nums"
+              style={{ color: "var(--ink-mute)" }}
+            >
+              {state.xpIntoLevel} / {state.xpForNext} XP
+            </div>
           </div>
         </div>
         <div
