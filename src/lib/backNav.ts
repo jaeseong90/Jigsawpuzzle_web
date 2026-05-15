@@ -6,18 +6,21 @@ type Handler = () => void;
 
 // Centralized back-navigation handling for a single-page PWA.
 //
-// One sentinel history entry is kept "above" the original entry at all times
-// once installed. Pressing the system back button consumes the sentinel,
-// fires popstate, and we re-push it so the user stays inside the app while
-// we dispatch to whichever screen/sheet is on top of the stack. A separate
-// exit guard lets the root menu require a second press within a short window
-// before actually closing the PWA.
+// Two sentinel history entries are placed above the original launch entry
+// when the module installs. On Android PWAs the platform will close the
+// window as soon as a back press would otherwise leave the launch entry,
+// often *before* popstate fires — keeping a two-deep cushion guarantees
+// our handler runs even when the user back-presses repeatedly. Each
+// popstate re-pushes one sentinel so we stay trapped.
 //
 // In-app close buttons (the "X" inside a sheet) just remove the handler
 // from the stack — the sentinel persists, and the user's next platform back
 // press becomes a no-op routed to the next handler down (or the exit guard).
-// That's intentional: any harm is a single extra back press, not an app
-// exit.
+//
+// Exit at the root menu is a two-step: the first back press shows the
+// caller's confirmation (typically a toast) and re-arms the sentinel; a
+// second press within the window navigates past the launch entry, which
+// closes the PWA on Android.
 
 const stack: Handler[] = [];
 let installed = false;
@@ -35,18 +38,16 @@ function pushSentinel() {
 function ensureInstalled() {
   if (typeof window === "undefined" || installed) return;
   installed = true;
-  // Push the persistent sentinel so the first back press has something
-  // to consume instead of closing the PWA.
-  if (window.history.state?.__back !== 1) {
-    pushSentinel();
-  }
+  // Two-deep cushion: the first sentinel absorbs the first back press,
+  // the second guarantees we still have one entry above origin after a
+  // race with Next.js's own router state setup. Without it, Android can
+  // exit the PWA before popstate ever fires.
+  pushSentinel();
+  pushSentinel();
   window.addEventListener("popstate", () => {
-    // The sentinel was just consumed. Re-push so we stay trapped.
-    pushSentinel();
     const top = stack[stack.length - 1];
     if (top) {
-      // Any active screen on the stack handles the press; cancel any
-      // pending exit-arm since the user is actively engaging the app.
+      pushSentinel();
       armed = false;
       if (armTimer) {
         clearTimeout(armTimer);
@@ -56,9 +57,7 @@ function ensureInstalled() {
       return;
     }
     if (!exitGuard) {
-      // Nothing to guard with; the re-pushed sentinel ensures we don't
-      // actually leave. The user's next back press will hit this same
-      // branch again (silent), which is harmless.
+      pushSentinel();
       return;
     }
     if (armed) {
@@ -67,14 +66,15 @@ function ensureInstalled() {
         clearTimeout(armTimer);
         armTimer = null;
       }
-      // The sentinel was already consumed by this popstate AND we
-      // re-pushed it above. To actually exit, we need to navigate past
-      // the original entry — go back twice.
+      // Don't re-push — let the navigation continue past origin so the
+      // PWA closes. The extra back call handles browsers where the
+      // current popstate alone leaves us still inside history.
       try {
         window.history.go(-2);
       } catch {}
       return;
     }
+    pushSentinel();
     armed = true;
     exitGuard.onFirstPress();
     if (armTimer) clearTimeout(armTimer);
