@@ -58,6 +58,21 @@ export default function PuzzleBoard(props: Props) {
 
   const [imageAspect, setImageAspect] = useState<number | null>(null);
   const [boardSize, setBoardSize] = useState<{ w: number; h: number } | null>(null);
+  // Boss/daily intro: brief photo reveal before the puzzle materializes.
+  // Skipped when the player is resuming a saved game — they already know
+  // the image and don't need a dramatic reveal blocking their resume.
+  const [showIntro, setShowIntro] = useState(() => {
+    if (typeof window === "undefined") return false;
+    if (!props.isBoss && !props.isDaily) return false;
+    if (props.stageId != null && loadGameFor(props.stageId)) return false;
+    return true;
+  });
+
+  useEffect(() => {
+    if (!showIntro) return;
+    const t = window.setTimeout(() => setShowIntro(false), 1800);
+    return () => window.clearTimeout(t);
+  }, [showIntro]);
 
   useEffect(() => {
     const img = new Image();
@@ -110,7 +125,7 @@ export default function PuzzleBoard(props: Props) {
         ref={containerRef}
         className="relative flex-1 mx-2 mb-3 mt-1 overflow-hidden flex items-center justify-center"
       >
-        {boardSize ? (
+        {boardSize && !showIntro ? (
           <Board
             key={`${boardSize.w}x${boardSize.h}-${rows}x${cols}-${imageSrc.length}-${props.difficulty ?? "standard"}`}
             imageSrc={imageSrc}
@@ -133,8 +148,113 @@ export default function PuzzleBoard(props: Props) {
         ) : (
           <div style={{ color: "var(--ink-mute)" }}>준비 중…</div>
         )}
+        {showIntro && (
+          <IntroReveal
+            imageSrc={imageSrc}
+            isBoss={!!props.isBoss}
+            isDaily={!!props.isDaily}
+            stageLabel={props.stageLabel}
+            onSkip={() => setShowIntro(false)}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+function IntroReveal({
+  imageSrc,
+  isBoss,
+  isDaily,
+  stageLabel,
+  onSkip,
+}: {
+  imageSrc: string;
+  isBoss: boolean;
+  isDaily: boolean;
+  stageLabel?: string;
+  onSkip: () => void;
+}) {
+  const eyebrow = isBoss ? "Boss" : "Daily";
+  const subtitle = isBoss ? "도전이 시작됩니다" : "오늘의 그림";
+  return (
+    <button
+      type="button"
+      onClick={onSkip}
+      aria-label="건너뛰기"
+      className="absolute inset-0 z-20 flex items-center justify-center fade-in-soft"
+      style={{ background: "var(--bg-app)" }}
+    >
+      <div className="intro-reveal w-full max-w-md px-3 flex flex-col items-center">
+        <div
+          className="text-[10px] tracking-[0.32em] font-bold mb-2"
+          style={{
+            color: isBoss ? "var(--danger)" : "var(--gold)",
+          }}
+        >
+          {eyebrow.toUpperCase()}
+        </div>
+        <div
+          className="intro-reveal-photo relative w-full overflow-hidden rounded-2xl"
+          style={{
+            aspectRatio: 1,
+            background: "var(--bg-elevated)",
+            border: `1px solid ${
+              isBoss ? "var(--danger)" : "var(--line)"
+            }`,
+            boxShadow: isBoss
+              ? "0 18px 50px rgba(179,53,31,0.35)"
+              : "0 12px 40px rgba(0,0,0,0.25)",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageSrc}
+            alt=""
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          {isBoss && (
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background:
+                  "radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.45) 100%)",
+              }}
+            />
+          )}
+        </div>
+        <div
+          className="mt-4 text-lg font-semibold"
+          style={{ color: "var(--ink-1)" }}
+        >
+          {stageLabel ?? "Puzzle"}
+        </div>
+        <div
+          className="mt-1 text-[12px]"
+          style={{ color: "var(--ink-mute)" }}
+        >
+          {subtitle}
+        </div>
+        <div
+          className="intro-reveal-progress mt-4 h-1 w-32 rounded-full overflow-hidden"
+          style={{ background: "var(--bg-elevated)" }}
+        >
+          <div
+            className="intro-reveal-bar h-full"
+            style={{
+              background: isBoss ? "var(--danger)" : "var(--gold)",
+            }}
+          />
+        </div>
+        <div
+          className="mt-3 text-[10px] tracking-[0.16em]"
+          style={{ color: "var(--ink-mute)" }}
+        >
+          TAP TO SKIP
+        </div>
+      </div>
+    </button>
   );
 }
 

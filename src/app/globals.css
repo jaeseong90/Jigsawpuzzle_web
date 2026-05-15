@@ -295,6 +295,41 @@ body {
   animation: streak-flair-pulse 1.6s ease-in-out infinite;
 }
 
+/* --- intro reveal (boss / daily) ---------------------------------- */
+
+@keyframes intro-reveal-photo-in {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes intro-reveal-bar-fill {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.intro-reveal {
+  animation: fade-in-soft 240ms ease-out both;
+}
+
+.intro-reveal-photo {
+  animation: intro-reveal-photo-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.intro-reveal-bar {
+  width: 0;
+  animation: intro-reveal-bar-fill 1.7s linear forwards;
+}
+
 /* --- daily streak chip ring --------------------------------------- */
 
 .streak-chip {
