@@ -42,6 +42,40 @@
   color-scheme: light;
 }
 
+/* ---------------- Palette overrides (light theme defaults) ----------
+   Selected via document.documentElement[data-palette]. Only the accent-
+   family vars rotate; theme + ink + bg stay coherent with the palette
+   underneath. */
+
+[data-palette="forest"] {
+  --accent: #3f6b3a;
+  --accent-fg: #ffffff;
+  --accent-soft: #d4e2c9;
+  --accent-soft-fg: #2d4e29;
+  --ring: rgba(63, 107, 58, 0.45);
+}
+[data-palette="harbor"] {
+  --accent: #3a5d7b;
+  --accent-fg: #ffffff;
+  --accent-soft: #cad9e4;
+  --accent-soft-fg: #25435d;
+  --ring: rgba(58, 93, 123, 0.45);
+}
+[data-palette="twilight"] {
+  --accent: #6b3d6e;
+  --accent-fg: #ffffff;
+  --accent-soft: #e2d2e3;
+  --accent-soft-fg: #4d2950;
+  --ring: rgba(107, 61, 110, 0.45);
+}
+[data-palette="monochrome"] {
+  --accent: #454545;
+  --accent-fg: #ffffff;
+  --accent-soft: #dadada;
+  --accent-soft-fg: #2a2a2a;
+  --ring: rgba(60, 60, 60, 0.45);
+}
+
 [data-theme="dark"] {
   --bg-app: #16120e;
   --bg-surface: #221c16;
@@ -76,6 +110,37 @@
   --ring: rgba(212, 160, 92, 0.55);
 
   color-scheme: dark;
+}
+
+/* ---------------- Palette overrides (dark theme) -------------------- */
+
+[data-theme="dark"][data-palette="forest"] {
+  --accent: #9bc77b;
+  --accent-fg: #1a140d;
+  --accent-soft: #2d3a23;
+  --accent-soft-fg: #b9dba0;
+  --ring: rgba(155, 199, 123, 0.55);
+}
+[data-theme="dark"][data-palette="harbor"] {
+  --accent: #82adc8;
+  --accent-fg: #1a140d;
+  --accent-soft: #1f3142;
+  --accent-soft-fg: #a8c9dc;
+  --ring: rgba(130, 173, 200, 0.55);
+}
+[data-theme="dark"][data-palette="twilight"] {
+  --accent: #c594c9;
+  --accent-fg: #1a140d;
+  --accent-soft: #36223a;
+  --accent-soft-fg: #ddb7e1;
+  --ring: rgba(197, 148, 201, 0.55);
+}
+[data-theme="dark"][data-palette="monochrome"] {
+  --accent: #b5b5b5;
+  --accent-fg: #16120e;
+  --accent-soft: #2a2a2a;
+  --accent-soft-fg: #d4d4d4;
+  --ring: rgba(181, 181, 181, 0.55);
 }
 
 @theme inline {

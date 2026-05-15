@@ -28,6 +28,9 @@ export type Progress = {
   // an orthogonal metric to time — clean play, not necessarily fast.
   bestFlow: Record<number, number>;
   lifetimeBestFlow: number;
+  // Tessera spent on cosmetics. Lifetime earned tessera is derived from
+  // cleared stages (rows × cols summed); balance = earned − spent.
+  tesseraSpent: number;
 };
 
 export function emptyProgress(): Progress {
@@ -40,7 +43,17 @@ export function emptyProgress(): Progress {
     bestByDifficulty: { relax: {}, master: {} },
     bestFlow: {},
     lifetimeBestFlow: 0,
+    tesseraSpent: 0,
   };
+}
+
+export function spendTessera(prev: Progress, amount: number): Progress {
+  const next: Progress = {
+    ...prev,
+    tesseraSpent: (prev.tesseraSpent ?? 0) + amount,
+  };
+  saveProgress(next);
+  return next;
 }
 
 export function loadProgress(): Progress {
@@ -64,6 +77,8 @@ export function loadProgress(): Progress {
       bestFlow: parsed.bestFlow ?? {},
       lifetimeBestFlow:
         typeof parsed.lifetimeBestFlow === "number" ? parsed.lifetimeBestFlow : 0,
+      tesseraSpent:
+        typeof parsed.tesseraSpent === "number" ? parsed.tesseraSpent : 0,
     };
   } catch {
     return emptyProgress();

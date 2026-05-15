@@ -23,6 +23,7 @@ import {
 } from "@/lib/daily";
 import { recordDailyHistory } from "@/lib/dailyHistory";
 import { applyTheme, loadTheme } from "@/lib/theme";
+import { applyPalette, loadSelectedPalette } from "@/lib/cosmetics";
 import {
   installFirstInteractionResume,
   installVisibilityHook,
@@ -95,6 +96,7 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setProgress(loadProgress());
     applyTheme(loadTheme());
+    applyPalette(loadSelectedPalette());
     installFirstInteractionResume();
     installVisibilityHook();
   }, []);

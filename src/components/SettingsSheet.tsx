@@ -5,8 +5,18 @@ import { clearSavedGame } from "@/lib/savedGame";
 import { isSoundEnabled, setSoundEnabled } from "@/lib/sound";
 import { isAmbientEnabled, setAmbientEnabled } from "@/lib/ambient";
 import { isHapticsEnabled, setHapticsEnabled } from "@/lib/haptics";
-import { loadProgress } from "@/lib/progress";
+import { loadProgress, spendTessera, type Progress } from "@/lib/progress";
 import { loadTheme, saveTheme, type Theme } from "@/lib/theme";
+import {
+  PALETTES,
+  applyPalette,
+  loadSelectedPalette,
+  loadUnlockedPalettes,
+  setSelectedPalette,
+  tesseraBalance,
+  unlockPalette,
+  type PaletteId,
+} from "@/lib/cosmetics";
 import {
   DIFFICULTIES,
   loadDefaultDifficulty,
@@ -58,6 +68,11 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
   const [ambientOn, setAmbientOn] = useState(false);
   const [hapticsOn, setHapticsOnState] = useState(true);
   const [theme, setTheme] = useState<Theme>("system");
+  const [progress, setProgress] = useState<Progress | null>(null);
+  const [palette, setPalette] = useState<PaletteId>("amber");
+  const [unlockedPalettes, setUnlockedPalettes] = useState<Set<PaletteId>>(
+    () => new Set(["amber"])
+  );
   const [difficulty, setDifficulty] = useState<Difficulty>("standard");
   const [shareToast, setShareToast] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -72,6 +87,9 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
     setHapticsOnState(isHapticsEnabled());
     setTheme(loadTheme());
     setDifficulty(loadDefaultDifficulty());
+    setProgress(loadProgress());
+    setPalette(loadSelectedPalette());
+    setUnlockedPalettes(loadUnlockedPalettes());
   }, [open]);
 
   if (!open) return null;
@@ -161,6 +179,32 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
               saveTheme(t);
             }} />
           </Row>
+
+          {progress && (
+            <PalettePicker
+              progress={progress}
+              selected={palette}
+              unlocked={unlockedPalettes}
+              onSelect={(id) => {
+                setPalette(id);
+                setSelectedPalette(id);
+                applyPalette(id);
+              }}
+              onUnlock={(id, cost) => {
+                const next = spendTessera(progress, cost);
+                unlockPalette(id);
+                setProgress(next);
+                setUnlockedPalettes((prev) => {
+                  const n = new Set(prev);
+                  n.add(id);
+                  return n;
+                });
+                setPalette(id);
+                setSelectedPalette(id);
+                applyPalette(id);
+              }}
+            />
+          )}
 
           <div
             className="rounded-xl px-4 py-3"
@@ -433,6 +477,122 @@ function ActionRow({
       </div>
       <span style={{ color: "var(--ink-mute)" }}>›</span>
     </button>
+  );
+}
+
+function PalettePicker({
+  progress,
+  selected,
+  unlocked,
+  onSelect,
+  onUnlock,
+}: {
+  progress: Progress;
+  selected: PaletteId;
+  unlocked: Set<PaletteId>;
+  onSelect: (id: PaletteId) => void;
+  onUnlock: (id: PaletteId, cost: number) => void;
+}) {
+  const balance = tesseraBalance(progress);
+  return (
+    <div
+      className="rounded-xl px-4 py-3"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--line)",
+      }}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <div
+            className="text-sm font-semibold"
+            style={{ color: "var(--ink-1)" }}
+          >
+            팔레트
+          </div>
+          <div
+            className="text-[11px]"
+            style={{ color: "var(--ink-mute)" }}
+          >
+            클리어로 모은 조각으로 잠금 해제
+          </div>
+        </div>
+        <div className="text-right">
+          <div
+            className="text-[10px] tracking-[0.16em] uppercase font-bold"
+            style={{ color: "var(--ink-mute)" }}
+          >
+            보유
+          </div>
+          <div
+            className="text-sm font-bold tabular-nums"
+            style={{ color: "var(--accent)" }}
+          >
+            ◆ {balance.toLocaleString()}
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-1.5">
+        {PALETTES.map((p) => {
+          const isUnlocked = unlocked.has(p.id);
+          const isSelected = selected === p.id;
+          const canAfford = balance >= p.cost;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => {
+                if (isUnlocked) onSelect(p.id);
+                else if (canAfford) onUnlock(p.id, p.cost);
+              }}
+              disabled={!isUnlocked && !canAfford}
+              aria-pressed={isSelected}
+              className="press-95 rounded-lg p-2 text-left flex flex-col gap-1"
+              style={{
+                background: isSelected
+                  ? "var(--accent-soft)"
+                  : "var(--bg-surface)",
+                border: `1.5px solid ${
+                  isSelected
+                    ? "var(--accent)"
+                    : isUnlocked
+                    ? "var(--line)"
+                    : canAfford
+                    ? "var(--line)"
+                    : "var(--line-soft)"
+                }`,
+                opacity: isUnlocked || canAfford ? 1 : 0.55,
+              }}
+            >
+              <div
+                className="w-full rounded-md flex items-center justify-center font-bold text-[10px] tracking-[0.16em]"
+                style={{
+                  background: p.swatch,
+                  color: "#fff",
+                  height: 28,
+                }}
+              >
+                {isSelected ? "사용 중" : isUnlocked ? "" : `◆ ${p.cost}`}
+              </div>
+              <div>
+                <div
+                  className="text-[11px] font-semibold leading-tight"
+                  style={{ color: "var(--ink-1)" }}
+                >
+                  {p.name}
+                </div>
+                <div
+                  className="text-[9px] leading-tight"
+                  style={{ color: "var(--ink-mute)" }}
+                >
+                  {p.description}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
