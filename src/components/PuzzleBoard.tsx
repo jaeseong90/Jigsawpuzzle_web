@@ -76,19 +76,21 @@ export default function PuzzleBoard(props: Props) {
   const [imageAspect, setImageAspect] = useState<number | null>(null);
   const [boardSize, setBoardSize] = useState<{ w: number; h: number } | null>(null);
   // Boss/daily intro: brief photo reveal before the puzzle materializes.
-  // Skipped when the player is resuming a saved game — they already know
-  // the image and don't need a dramatic reveal blocking their resume.
+  // Skipped when the player is resuming a saved game (mid-puzzle reentry
+  // shouldn't be blocked) or replaying a stage they've already cleared
+  // (the reveal is for first-time impact, not friction on every replay).
   const [showIntro, setShowIntro] = useState(() => {
     if (typeof window === "undefined") return false;
     if (!props.isBoss && !props.isDaily) return false;
     if (props.stageId != null && loadGameFor(props.stageId)) return false;
     if (props.personalId && loadPersonalGame(props.personalId)) return false;
+    if (props.previousBestMs != null) return false;
     return true;
   });
 
   useEffect(() => {
     if (!showIntro) return;
-    const t = window.setTimeout(() => setShowIntro(false), 1800);
+    const t = window.setTimeout(() => setShowIntro(false), 1200);
     return () => window.clearTimeout(t);
   }, [showIntro]);
 

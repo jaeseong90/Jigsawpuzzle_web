@@ -7,6 +7,7 @@ import {
   type Stage,
   TOTAL_STAGE_COUNT,
   chapterIdForStage,
+  type Chapter,
 } from "@/data/stages";
 import { emptyProgress, loadProgress, type Progress } from "@/lib/progress";
 import { listSavedGames } from "@/lib/savedGame";
@@ -52,6 +53,10 @@ export default function StageSelect({
   const [showScrollTop, setShowScrollTop] = useState(false);
   const toastTimerRef = useRef<number | null>(null);
   const chapterRefs = useRef<Map<number, HTMLElement | null>>(new Map());
+  // Only one chapter is open at a time — the home screen reads like a
+  // shelf of chapter "worlds" rather than a 999-stage wall. Initialized
+  // to the chapter that contains the player's next action.
+  const [openChapterId, setOpenChapterId] = useState<number | null>(null);
 
   const showToast = (msg: string) => {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -102,9 +107,19 @@ export default function StageSelect({
     if (!progress) return;
     const target = resumeStageId ?? nextStageId ?? progress.unlockedUpTo;
     const chId = chapterIdForStage(target);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOpenChapterId((prev) => prev ?? chId);
     const el = chapterRefs.current.get(chId);
     if (el) el.scrollIntoView({ block: "start", behavior: "auto" });
   }, [progress, resumeStageId, nextStageId]);
+
+  const toggleChapter = (id: number) => {
+    setOpenChapterId((prev) => (prev === id ? null : id));
+    window.setTimeout(() => {
+      const el = chapterRefs.current.get(id);
+      if (el) el.scrollIntoView({ block: "start", behavior: "smooth" });
+    }, 30);
+  };
 
   const handleResetProgress = () => {
     setProgress(emptyProgress());
@@ -209,7 +224,7 @@ export default function StageSelect({
         />
       )}
 
-      <div className="mt-5 space-y-6">
+      <div className="mt-5 space-y-3">
         {CHAPTERS.map((ch) => {
           const stagesInChapter = STAGES.filter(
             (s) => s.id >= ch.range[0] && s.id <= ch.range[1]
@@ -228,95 +243,49 @@ export default function StageSelect({
           const chapterMastered =
             chapterFullyCleared &&
             starsInChapter === stagesInChapter.length * 3;
+          const unlockedInChapter = progress
+            ? stagesInChapter.some((s) => s.id <= progress.unlockedUpTo)
+            : ch.id === 1;
+          const isOpen = openChapterId === ch.id;
           return (
-            <section
+            <ChapterBlock
               key={ch.id}
-              ref={(el) => {
+              chapter={ch}
+              cleared={clearedInChapter}
+              total={stagesInChapter.length}
+              stars={starsInChapter}
+              fullyCleared={chapterFullyCleared}
+              mastered={chapterMastered}
+              unlocked={unlockedInChapter}
+              isOpen={isOpen}
+              onToggle={() => toggleChapter(ch.id)}
+              sectionRef={(el) => {
                 chapterRefs.current.set(ch.id, el);
               }}
-              className="scroll-mt-3 chapter-section"
             >
-              <header className="flex items-end justify-between mb-2 px-0.5">
-                <div className="min-w-0">
-                  <div
-                    className="text-[10px] font-bold tracking-[0.18em] uppercase flex items-center gap-1.5"
-                    style={{ color: "var(--ink-mute)" }}
-                  >
-                    Chapter {ch.id}
-                    {chapterMastered && (
-                      <span
-                        className="rounded-sm px-1 py-0.5 text-[9px]"
-                        style={{
-                          background: "var(--gold-soft)",
-                          color: "var(--gold)",
-                          letterSpacing: "0.14em",
-                        }}
-                      >
-                        MASTER
-                      </span>
-                    )}
-                    {!chapterMastered && chapterFullyCleared && (
-                      <span
-                        className="rounded-sm px-1 py-0.5 text-[9px]"
-                        style={{
-                          background: "var(--success-soft)",
-                          color: "var(--success)",
-                          letterSpacing: "0.14em",
-                        }}
-                      >
-                        CLEAR
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    className="text-lg font-semibold leading-tight"
-                    style={{ color: "var(--ink-1)" }}
-                  >
-                    {ch.title}
-                  </div>
-                  <div
-                    className="text-[11px]"
-                    style={{ color: "var(--ink-mute)" }}
-                  >
-                    {ch.subtitle}
-                  </div>
+              {isOpen && (
+                <div className="grid grid-cols-3 gap-3 mt-3">
+                  {stagesInChapter.map((s) => (
+                    <StageCard
+                      key={s.id}
+                      stage={s}
+                      progress={progress}
+                      isResume={resumeStageId === s.id}
+                      isNext={nextStageId === s.id}
+                      isDaily={dailyStageId === s.id}
+                      onPlay={onPlay}
+                      onLockedTap={(stageId) => {
+                        const unlockedUpTo = progress?.unlockedUpTo ?? 1;
+                        showToast(
+                          `스테이지 ${unlockedUpTo}을(를) 먼저 클리어해 주세요`
+                        );
+                        void stageId;
+                      }}
+                    />
+                  ))}
                 </div>
-                <div className="text-right">
-                  <div
-                    className="text-[11px] font-semibold tabular-nums"
-                    style={{ color: "var(--ink-2)" }}
-                  >
-                    {clearedInChapter} / {stagesInChapter.length}
-                  </div>
-                  <div
-                    className="text-[11px] font-semibold tabular-nums"
-                    style={{ color: "var(--ink-mute)" }}
-                  >
-                    ★ {starsInChapter} / {stagesInChapter.length * 3}
-                  </div>
-                </div>
-              </header>
-              <div className="grid grid-cols-3 gap-3">
-                {stagesInChapter.map((s) => (
-                  <StageCard
-                    key={s.id}
-                    stage={s}
-                    progress={progress}
-                    isResume={resumeStageId === s.id}
-                    isNext={nextStageId === s.id}
-                    isDaily={dailyStageId === s.id}
-                    onPlay={onPlay}
-                    onLockedTap={(stageId) => {
-                      const unlockedUpTo = progress?.unlockedUpTo ?? 1;
-                      showToast(
-                        `스테이지 ${unlockedUpTo}을(를) 먼저 클리어해 주세요`
-                      );
-                      void stageId;
-                    }}
-                  />
-                ))}
-              </div>
-            </section>
+              )}
+            </ChapterBlock>
           );
         })}
       </div>
@@ -487,6 +456,170 @@ function ResumeBanner({
         </button>
       )}
     </div>
+  );
+}
+
+function ChapterBlock({
+  chapter,
+  cleared,
+  total,
+  stars,
+  fullyCleared,
+  mastered,
+  unlocked,
+  isOpen,
+  onToggle,
+  sectionRef,
+  children,
+}: {
+  chapter: Chapter;
+  cleared: number;
+  total: number;
+  stars: number;
+  fullyCleared: boolean;
+  mastered: boolean;
+  unlocked: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
+  sectionRef: (el: HTMLElement | null) => void;
+  children?: React.ReactNode;
+}) {
+  const pct = total > 0 ? cleared / total : 0;
+  const accent = mastered
+    ? "var(--gold)"
+    : fullyCleared
+    ? "var(--success)"
+    : "var(--accent)";
+  return (
+    <section
+      ref={sectionRef}
+      className="scroll-mt-3 chapter-section rounded-2xl overflow-hidden"
+      style={{
+        background: "var(--bg-surface)",
+        border: `1px solid ${isOpen ? accent : "var(--line)"}`,
+        opacity: unlocked ? 1 : 0.7,
+        transition: "border-color 200ms ease",
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="press-95 w-full text-left px-4 py-3 flex items-center gap-3"
+        aria-expanded={isOpen}
+      >
+        <div
+          className="flex-none flex items-center justify-center w-12 h-12 rounded-xl font-bold tabular-nums"
+          style={{
+            background: isOpen ? accent : "var(--bg-elevated)",
+            color: isOpen ? "var(--accent-fg)" : "var(--ink-2)",
+            border: `1px solid ${isOpen ? accent : "var(--line)"}`,
+            fontSize: 14,
+          }}
+        >
+          {String(chapter.id).padStart(2, "0")}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <div
+              className="text-[10px] font-bold tracking-[0.18em] uppercase"
+              style={{ color: "var(--ink-mute)" }}
+            >
+              Chapter {chapter.id}
+            </div>
+            {mastered && (
+              <span
+                className="rounded-sm px-1 py-0.5 text-[9px]"
+                style={{
+                  background: "var(--gold-soft)",
+                  color: "var(--gold)",
+                  letterSpacing: "0.14em",
+                }}
+              >
+                MASTER
+              </span>
+            )}
+            {!mastered && fullyCleared && (
+              <span
+                className="rounded-sm px-1 py-0.5 text-[9px]"
+                style={{
+                  background: "var(--success-soft)",
+                  color: "var(--success)",
+                  letterSpacing: "0.14em",
+                }}
+              >
+                CLEAR
+              </span>
+            )}
+            {!unlocked && (
+              <span
+                className="rounded-sm px-1 py-0.5 text-[9px]"
+                style={{
+                  background: "var(--bg-elevated)",
+                  color: "var(--ink-mute)",
+                  letterSpacing: "0.14em",
+                }}
+              >
+                LOCKED
+              </span>
+            )}
+          </div>
+          <div
+            className="text-base font-semibold leading-tight truncate"
+            style={{ color: "var(--ink-1)" }}
+          >
+            {chapter.title}
+          </div>
+          <div
+            className="text-[11px] truncate"
+            style={{ color: "var(--ink-mute)" }}
+          >
+            {chapter.subtitle}
+          </div>
+          <div
+            className="mt-1.5 h-1 rounded-full overflow-hidden"
+            style={{ background: "var(--bg-elevated)" }}
+          >
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${Math.round(pct * 100)}%`,
+                background: accent,
+                transition: "width 400ms cubic-bezier(0.2,0.8,0.2,1)",
+              }}
+            />
+          </div>
+        </div>
+        <div className="flex-none text-right">
+          <div
+            className="text-[11px] font-semibold tabular-nums"
+            style={{ color: "var(--ink-2)" }}
+          >
+            {cleared} / {total}
+          </div>
+          <div
+            className="text-[11px] tabular-nums"
+            style={{ color: "var(--gold)" }}
+          >
+            ★ {stars}
+          </div>
+          <div
+            className="mt-0.5 text-[14px]"
+            style={{ color: "var(--ink-mute)" }}
+            aria-hidden
+          >
+            {isOpen ? "▾" : "▸"}
+          </div>
+        </div>
+      </button>
+      {isOpen && (
+        <div
+          className="px-3 pb-4"
+          style={{ borderTop: "1px solid var(--line-soft)" }}
+        >
+          {children}
+        </div>
+      )}
+    </section>
   );
 }
 
