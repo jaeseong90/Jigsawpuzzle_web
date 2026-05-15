@@ -103,13 +103,14 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
       style={{ background: "var(--bg-overlay)" }}
     >
       <div
-        className="w-full max-w-sm rounded-2xl px-5 py-5"
+        className="w-full max-w-sm rounded-2xl px-5 py-5 flex flex-col"
         style={{
           background: "var(--bg-surface)",
           border: "1px solid var(--line)",
+          maxHeight: "88vh",
         }}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-none">
           <div>
             <div
               className="text-[11px] uppercase tracking-[0.18em] font-bold"
@@ -138,7 +139,7 @@ export default function SettingsSheet({ open, onClose, onResetProgress }: Props)
           </button>
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-3 overflow-y-auto flex-1 -mx-1 px-1">
           <button
             type="button"
             onClick={() => setStatsOpen(true)}
