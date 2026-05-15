@@ -1416,6 +1416,7 @@ function SolveModal({
         isBoss,
         isDaily,
         isPersonal,
+        streak: streakDisplay?.streak,
       });
       const label =
         result === "shared"

@@ -18,6 +18,7 @@ export type ShareCardInput = {
   isBoss: boolean;
   isDaily: boolean;
   isPersonal?: boolean;
+  streak?: number;
 };
 
 const W = 1200;
@@ -176,6 +177,12 @@ export async function buildShareCardBlob(input: ShareCardInput): Promise<Blob | 
       "700 18px Inter, -apple-system, BlinkMacSystemFont, sans-serif";
     ctx.textBaseline = "middle";
     ctx.fillText("DAILY CHALLENGE", 720, 220);
+    if (input.streak && input.streak > 1) {
+      ctx.fillStyle = COLORS.ink1;
+      ctx.font =
+        "700 56px Inter, -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillText(`${input.streak}일 연속`, 720, 290);
+    }
   }
 
   // Footer
@@ -208,11 +215,15 @@ export function shareCardText(input: ShareCardInput): string {
   const label = input.isPersonal
     ? "내 사진"
     : `${chapter?.title ?? "스테이지"} · ${input.stageTitle}`;
-  return [
+  const lines = [
     "TESSERA · 조각의 시간",
     `${label} · ${difficultyLabel(input.difficulty)}`,
     `${stars}  ${formatTime(input.durationMs)}`,
-  ].join("\n");
+  ];
+  if (input.isDaily && input.streak && input.streak > 1) {
+    lines.push(`데일리 ${input.streak}일 연속`);
+  }
+  return lines.join("\n");
 }
 
 export type ShareResult =
