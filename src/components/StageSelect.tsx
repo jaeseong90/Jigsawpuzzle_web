@@ -865,14 +865,22 @@ function StageCard({
         }}
       />
       <div
-        className="absolute inset-x-0 bottom-0 px-1.5 pb-1 pt-3"
+        className="absolute inset-x-0 bottom-0 px-1.5 pb-1 pt-4"
         style={{
           background:
-            "linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%)",
+            "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0) 100%)",
         }}
       >
+        <div
+          className="text-[10px] font-semibold text-white leading-tight truncate"
+          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}
+        >
+          {stage.title}
+        </div>
         <div className="flex items-end justify-between text-white">
-          <span className="text-xs font-bold tabular-nums">
+          <span
+            className="text-[10px] font-bold tabular-nums opacity-80"
+          >
             {String(stage.id).padStart(3, "0")}
           </span>
           {cleared && best != null && (
