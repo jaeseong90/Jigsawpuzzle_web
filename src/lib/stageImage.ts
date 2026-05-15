@@ -47,9 +47,14 @@ const BOSS_IMAGE_IDS = [
   855, // golden field
 ];
 
-export function getStageImageDataUrl(stageId: number): string {
-  return getStageImageUrl(stageId, SIZE);
+export function getStageImageDataUrl(stageId: number, size: number = SIZE): string {
+  return getStageImageUrl(stageId, size);
 }
+
+// Tile-grid thumbnails on the home chapter grid render ~80–120px wide.
+// Serving a 200px image keeps them crisp on 2× DPR phones while cutting
+// the per-thumb payload roughly 5–8× versus the full 720 board image.
+export const THUMB_SIZE = 200;
 
 export function getStageImageUrl(stageId: number, size: number = SIZE): string {
   const isBoss = stageId % 10 === 0;

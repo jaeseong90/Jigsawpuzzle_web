@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getStageImageDataUrl } from "@/lib/stageImage";
+import { getStageImageDataUrl, THUMB_SIZE } from "@/lib/stageImage";
 import { loadDaily, type DailyRecord } from "@/lib/daily";
 import { currentTier } from "@/lib/dailyRewards";
 import { getStage, type Stage } from "@/data/stages";
@@ -24,7 +24,7 @@ export default function DailyBanner({ onPlay }: Props) {
   const stage = getStage(record.stageId);
   if (!stage) return null;
 
-  const thumb = getStageImageDataUrl(record.stageId);
+  const thumb = getStageImageDataUrl(record.stageId, THUMB_SIZE);
   const tier = currentTier(record.streak);
 
   return (

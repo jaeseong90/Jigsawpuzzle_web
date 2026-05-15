@@ -8,7 +8,10 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import Confetti from "./Confetti";
+import dynamic from "next/dynamic";
+
+// Defer the confetti bundle until it's actually needed (post-solve).
+const Confetti = dynamic(() => import("./Confetti"), { ssr: false });
 import {
   clearSavedGame,
   clearSavedGameFor,
@@ -1215,7 +1218,8 @@ function Toolbar({
       <ToolButton
         onClick={useHint}
         disabled={solved || hintsLeft <= 0 || paused}
-        accent
+        accent={hintsLeft > 1}
+        danger={hintsLeft === 1}
         label={`힌트 ${hintsLeft}`}
         glyph="✦"
       />

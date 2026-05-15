@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { loadProgress, type Progress } from "@/lib/progress";
 import { STAGES, type Stage } from "@/data/stages";
-import { getStageImageDataUrl } from "@/lib/stageImage";
+import { getStageImageDataUrl, THUMB_SIZE } from "@/lib/stageImage";
 import {
   deletePersonalPhoto,
   listPersonalPhotos,
@@ -308,7 +308,7 @@ function GalleryTile({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={getStageImageDataUrl(stage.id)}
+          src={getStageImageDataUrl(stage.id, THUMB_SIZE)}
           alt=""
           loading="lazy"
           decoding="async"

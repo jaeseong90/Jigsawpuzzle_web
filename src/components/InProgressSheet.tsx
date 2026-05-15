@@ -7,7 +7,7 @@ import {
   type SavedGameSnapshot,
 } from "@/lib/savedGame";
 import { getStage } from "@/data/stages";
-import { getStageImageDataUrl } from "@/lib/stageImage";
+import { getStageImageDataUrl, THUMB_SIZE } from "@/lib/stageImage";
 
 type Props = {
   open: boolean;
@@ -114,7 +114,7 @@ function Row({
   onDiscard: () => void;
 }) {
   const stage = getStage(snapshot.stageId);
-  const thumb = getStageImageDataUrl(snapshot.stageId);
+  const thumb = getStageImageDataUrl(snapshot.stageId, THUMB_SIZE);
   const elapsed = formatTime(snapshot.elapsedMs);
   const correct = snapshot.pieces.filter((p) => {
     const home = p.origRow * (stage?.cols ?? 1) + p.origCol;

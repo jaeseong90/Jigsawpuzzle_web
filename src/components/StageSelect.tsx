@@ -11,7 +11,7 @@ import {
 } from "@/data/stages";
 import { emptyProgress, loadProgress, type Progress } from "@/lib/progress";
 import { listSavedGames } from "@/lib/savedGame";
-import { getStageImageDataUrl } from "@/lib/stageImage";
+import { getStageImageDataUrl, THUMB_SIZE } from "@/lib/stageImage";
 import { getDailyStageId } from "@/lib/daily";
 import dynamic from "next/dynamic";
 import TutorialTip from "./TutorialTip";
@@ -454,7 +454,7 @@ function NextStageBanner({
   stageId: number;
   onPlay: () => void;
 }) {
-  const thumb = getStageImageDataUrl(stageId);
+  const thumb = getStageImageDataUrl(stageId, THUMB_SIZE);
   return (
     <button
       type="button"
@@ -763,7 +763,7 @@ function StageCard({
   const mastered = cleared && stars === 3;
   const [imgLoaded, setImgLoaded] = useState(false);
 
-  const img = getStageImageDataUrl(stage.id);
+  const img = getStageImageDataUrl(stage.id, THUMB_SIZE);
 
   return (
     <button
