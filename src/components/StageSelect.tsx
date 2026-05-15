@@ -512,6 +512,7 @@ function NextStageBanner({
   onPlay: () => void;
 }) {
   const thumb = getStageImageDataUrl(stageId, THUMB_SIZE);
+  const stage = STAGES.find((s) => s.id === stageId);
   return (
     <button
       type="button"
@@ -532,16 +533,19 @@ function NextStageBanner({
           className="absolute inset-0 h-full w-full object-cover"
         />
       </div>
-      <div className="flex-1 flex items-center justify-between px-4 py-3">
-        <div>
+      <div className="flex-1 min-w-0 flex items-center justify-between px-4 py-3">
+        <div className="min-w-0">
           <div className="text-[10px] tracking-[0.18em] uppercase font-bold opacity-85">
             Next
           </div>
-          <div className="text-base font-semibold">
-            스테이지 {stageId} 시작
+          <div className="text-base font-semibold truncate">
+            {stage?.title ?? `스테이지 ${stageId}`}
+          </div>
+          <div className="text-[10px] tabular-nums opacity-80">
+            스테이지 {stageId}
           </div>
         </div>
-        <div className="text-xl" aria-hidden>
+        <div className="text-xl flex-none ml-2" aria-hidden>
           ▶
         </div>
       </div>
@@ -560,6 +564,7 @@ function ResumeBanner({
   onResume: () => void;
   onOpenList?: () => void;
 }) {
+  const stage = STAGES.find((s) => s.id === stageId);
   return (
     <div
       className="mt-3 flex items-stretch rounded-2xl overflow-hidden"
@@ -568,17 +573,20 @@ function ResumeBanner({
       <button
         type="button"
         onClick={onResume}
-        className="press-95 flex-1 flex items-center justify-between px-4 py-3 text-left"
+        className="press-95 flex-1 min-w-0 flex items-center justify-between px-4 py-3 text-left"
       >
-        <div>
+        <div className="min-w-0">
           <div className="text-[10px] tracking-[0.18em] uppercase font-bold opacity-80">
             Resume
           </div>
-          <div className="text-base font-semibold">
-            스테이지 {stageId} 이어하기
+          <div className="text-base font-semibold truncate">
+            {stage?.title ?? `스테이지 ${stageId}`} 이어하기
+          </div>
+          <div className="text-[10px] tabular-nums opacity-80">
+            스테이지 {stageId}
           </div>
         </div>
-        <div className="text-xl" aria-hidden>
+        <div className="text-xl flex-none ml-2" aria-hidden>
           ▶
         </div>
       </button>

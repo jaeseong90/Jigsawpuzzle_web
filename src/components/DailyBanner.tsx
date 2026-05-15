@@ -85,8 +85,8 @@ export default function DailyBanner({ onPlay }: Props) {
               >
                 Daily · 오늘의 도전
               </div>
-              <div className="text-base font-semibold leading-tight">
-                스테이지 {record.stageId}
+              <div className="text-base font-semibold leading-tight truncate">
+                {stage.title}
                 {stage.isBoss && (
                   <span
                     className="ml-1 text-[10px] tracking-[0.14em]"
@@ -95,6 +95,12 @@ export default function DailyBanner({ onPlay }: Props) {
                     BOSS
                   </span>
                 )}
+              </div>
+              <div
+                className="text-[10px] tabular-nums"
+                style={{ color: "var(--ink-faint)" }}
+              >
+                스테이지 {record.stageId}
               </div>
               <div
                 className="mt-0.5 text-[11px] tabular-nums flex items-center gap-1.5"
