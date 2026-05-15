@@ -66,6 +66,7 @@ type Props = {
   previousBestMs?: number;
   isDaily?: boolean;
   difficulty?: Difficulty;
+  zen?: boolean;
   onSolved?: (
     durationMs: number,
     stars: number,
@@ -155,7 +156,7 @@ export default function PuzzleBoard(props: Props) {
       >
         {boardSize && !showIntro ? (
           <Board
-            key={`${boardSize.w}x${boardSize.h}-${rows}x${cols}-${imageSrc.length}-${props.difficulty ?? "standard"}`}
+            key={`${boardSize.w}x${boardSize.h}-${rows}x${cols}-${imageSrc.length}-${props.difficulty ?? "standard"}-${props.zen ? "zen" : "std"}`}
             imageSrc={imageSrc}
             rows={rows}
             cols={cols}
@@ -169,6 +170,7 @@ export default function PuzzleBoard(props: Props) {
             isDaily={props.isDaily}
             difficulty={props.difficulty}
             rotateMode={props.difficulty === "master"}
+            zen={props.zen}
             onSolved={props.onSolved}
             onExit={props.onExit}
             onNext={props.onNext}
@@ -353,6 +355,7 @@ type BoardProps = {
   isDaily?: boolean;
   difficulty?: Difficulty;
   rotateMode?: boolean;
+  zen?: boolean;
   onSolved?: (
     durationMs: number,
     stars: number,
@@ -483,6 +486,7 @@ function Board({
   isDaily,
   difficulty,
   rotateMode,
+  zen,
   onSolved,
   onExit,
   onNext,
@@ -1179,6 +1183,7 @@ function Board({
           moveCount={moveCount}
           hintsUsed={hintsUsed}
           flowBest={flowBest}
+          zen={!!zen}
           onExit={onExit}
           onReplay={replay}
           onNext={hasNext ? onNext : onExit}
@@ -1395,6 +1400,7 @@ function SolveModal({
   moveCount,
   hintsUsed,
   flowBest,
+  zen,
   onExit,
   onReplay,
   onNext,
@@ -1411,6 +1417,7 @@ function SolveModal({
   moveCount: number;
   hintsUsed: number;
   flowBest: number;
+  zen: boolean;
   onExit?: () => void;
   onReplay: () => void;
   onNext?: () => void;
@@ -1473,18 +1480,24 @@ function SolveModal({
       >
         <div
           className="text-[11px] uppercase tracking-[0.18em] font-bold"
-          style={{ color: isBoss ? "var(--danger)" : "var(--accent)" }}
+          style={{
+            color: zen
+              ? "var(--success)"
+              : isBoss
+              ? "var(--danger)"
+              : "var(--accent)",
+          }}
         >
-          {isBoss ? "Boss Cleared" : "Cleared"}
-          {diff ? ` · ${diff.en}` : ""}
+          {zen ? "Zen 쉼터" : isBoss ? "Boss Cleared" : "Cleared"}
+          {!zen && diff ? ` · ${diff.en}` : ""}
         </div>
         <div
           className="mt-1 text-2xl font-semibold"
           style={{ color: "var(--ink-1)" }}
         >
-          완성했어요
+          {zen ? "쉬어가는 한 판" : "완성했어요"}
         </div>
-        <StarsRow count={stars} />
+        {!zen && <StarsRow count={stars} />}
         <div
           className="mt-2 text-3xl font-bold tabular-nums"
           style={{ color: "var(--ink-1)" }}
@@ -1492,14 +1505,16 @@ function SolveModal({
           {formatTime(elapsed)}
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-semibold">
-          {isNewRecord ? (
+          {zen ? (
+            <Tag tone="soft">시간 없이</Tag>
+          ) : isNewRecord ? (
             <Tag tone="accent">신기록</Tag>
           ) : (
             <Tag tone="soft">이전 최고 {formatTime(previousBestMs!)}</Tag>
           )}
-          {isPerfect && <Tag tone="gold">Perfect</Tag>}
-          {isDaily && <Tag tone="gold">오늘의 도전</Tag>}
-          {streakDisplay && (
+          {!zen && isPerfect && <Tag tone="gold">Perfect</Tag>}
+          {!zen && isDaily && <Tag tone="gold">오늘의 도전</Tag>}
+          {!zen && streakDisplay && (
             <Tag tone="gold">
               {streakDisplay.flair ? `${streakDisplay.flair} ` : ""}
               {streakDisplay.streak}일 연속

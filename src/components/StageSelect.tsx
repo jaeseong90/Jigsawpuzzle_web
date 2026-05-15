@@ -40,12 +40,16 @@ type Props = {
     rotate: boolean;
     photoId: string;
   }) => void;
+  onZen?: () => void;
+  zenAvailable?: boolean;
 };
 
 export default function StageSelect({
   progressOverride,
   onPlay,
   onPersonal,
+  onZen,
+  zenAvailable,
 }: Props) {
   const [progress, setProgress] = useState<Progress | null>(progressOverride ?? null);
   const [resumeStageIds, setResumeStageIds] = useState<number[]>([]);
@@ -263,6 +267,8 @@ export default function StageSelect({
         />
       ) : null}
 
+      {zenAvailable && onZen && <ZenBanner onPlay={onZen} />}
+
       <div className="mt-5 space-y-3">
         {CHAPTERS.map((ch) => {
           const stagesInChapter = STAGES.filter(
@@ -444,6 +450,57 @@ function BrandMark() {
         <rect x="34" y="34" width="22" height="22" rx="3" fill="var(--accent)" />
       </svg>
     </span>
+  );
+}
+
+function ZenBanner({ onPlay }: { onPlay: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onPlay}
+      className="press-95 mt-2 w-full flex items-stretch rounded-2xl overflow-hidden text-left"
+      style={{
+        background: "var(--bg-surface)",
+        border: "1px solid var(--success)",
+      }}
+    >
+      <div
+        className="flex-none flex items-center justify-center w-14"
+        style={{
+          background: "var(--success-soft)",
+          color: "var(--success)",
+        }}
+      >
+        <span aria-hidden style={{ fontSize: 22 }}>
+          ☯
+        </span>
+      </div>
+      <div className="flex-1 flex items-center justify-between px-4 py-3">
+        <div>
+          <div
+            className="text-[10px] tracking-[0.18em] uppercase font-bold"
+            style={{ color: "var(--success)" }}
+          >
+            Zen · 쉼터
+          </div>
+          <div
+            className="text-base font-semibold"
+            style={{ color: "var(--ink-1)" }}
+          >
+            시간 없이, 점수 없이
+          </div>
+          <div
+            className="text-[11px]"
+            style={{ color: "var(--ink-mute)" }}
+          >
+            완성한 그림 중에서 한 장 골라드려요
+          </div>
+        </div>
+        <div className="text-xl" aria-hidden style={{ color: "var(--success)" }}>
+          ▶
+        </div>
+      </div>
+    </button>
   );
 }
 

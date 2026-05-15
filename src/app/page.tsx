@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import StageSelect from "@/components/StageSelect";
 import PuzzleBoard from "@/components/PuzzleBoard";
 import {
+  STAGES,
   TOTAL_STAGE_COUNT,
   type Stage,
   getStage,
@@ -33,6 +34,7 @@ import {
 } from "@/lib/difficulty";
 import { xpForClear } from "@/lib/level";
 import {
+  listPersonalPhotos,
   recordPersonalCompletion,
   recordPersonalPlay,
 } from "@/lib/personalLibrary";
@@ -43,6 +45,10 @@ import {
 } from "@/lib/dailyRewards";
 import StreakCelebration from "@/components/StreakCelebration";
 import { recordClearEvent } from "@/lib/playEvents";
+
+type ZenSource =
+  | { kind: "stage"; stageId: number }
+  | { kind: "personal"; photoId: string; imageSrc: string; rows: number; cols: number };
 
 type View =
   | { kind: "menu" }
@@ -59,6 +65,14 @@ type View =
       cols: number;
       rotate: boolean;
       photoId: string;
+    }
+  | {
+      kind: "zen";
+      source: ZenSource;
+      stageLabel: string;
+      imageSrc: string;
+      rows: number;
+      cols: number;
     };
 
 export default function Home() {
@@ -120,6 +134,68 @@ export default function Home() {
     });
   };
 
+  const launchZen = async () => {
+    const p = progress ?? loadProgress();
+    const clearedIds = Object.keys(p.cleared).map((n) => parseInt(n, 10));
+    let personals: Awaited<ReturnType<typeof listPersonalPhotos>> = [];
+    try {
+      personals = await listPersonalPhotos();
+    } catch {
+      personals = [];
+    }
+    type Pick =
+      | { kind: "stage"; stage: Stage }
+      | { kind: "personal"; photo: (typeof personals)[number] };
+    const pool: Pick[] = [];
+    for (const id of clearedIds) {
+      const stage = STAGES.find((s) => s.id === id);
+      if (stage) pool.push({ kind: "stage", stage });
+    }
+    for (const photo of personals) pool.push({ kind: "personal", photo });
+    if (pool.length === 0) return;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pick.kind === "stage") {
+      setView({
+        kind: "zen",
+        source: { kind: "stage", stageId: pick.stage.id },
+        stageLabel: pick.stage.title,
+        imageSrc: getStageImageDataUrl(pick.stage.id),
+        rows: pick.stage.rows,
+        cols: pick.stage.cols,
+      });
+    } else {
+      const ph = pick.photo;
+      setView({
+        kind: "zen",
+        source: {
+          kind: "personal",
+          photoId: ph.id,
+          imageSrc: ph.dataUrl,
+          rows: ph.lastSettings.rows,
+          cols: ph.lastSettings.cols,
+        },
+        stageLabel: "내 사진",
+        imageSrc: ph.dataUrl,
+        rows: ph.lastSettings.rows,
+        cols: ph.lastSettings.cols,
+      });
+    }
+  };
+
+  const [zenAvailable, setZenAvailable] = useState(false);
+  useEffect(() => {
+    if (view.kind !== "menu") return;
+    const p = progress ?? loadProgress();
+    if (Object.keys(p.cleared).length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setZenAvailable(true);
+      return;
+    }
+    listPersonalPhotos()
+      .then((list) => setZenAvailable(list.length > 0))
+      .catch(() => setZenAvailable(false));
+  }, [view, progress]);
+
   const celebrationOverlay = (
     <StreakCelebration
       tier={pendingMilestone}
@@ -148,6 +224,8 @@ export default function Home() {
               photoId: opts.photoId,
             });
           }}
+          onZen={launchZen}
+          zenAvailable={zenAvailable}
         />
         {celebrationOverlay}
       </>
@@ -169,6 +247,33 @@ export default function Home() {
           hasNext={false}
           onSolved={(durationMs) => {
             void recordPersonalCompletion(view.photoId, durationMs);
+          }}
+          onExit={() => setView({ kind: "menu" })}
+          onNext={() => setView({ kind: "menu" })}
+        />
+        {celebrationOverlay}
+      </>
+    );
+  }
+
+  if (view.kind === "zen") {
+    return (
+      <>
+        <PuzzleBoard
+          key={`zen-${view.source.kind}-${
+            view.source.kind === "stage"
+              ? view.source.stageId
+              : view.source.photoId
+          }`}
+          imageSrc={view.imageSrc}
+          rows={view.rows}
+          cols={view.cols}
+          stageLabel={view.stageLabel}
+          difficulty="standard"
+          hasNext={false}
+          zen
+          onSolved={() => {
+            /* Zen does not record progress / XP / completions */
           }}
           onExit={() => setView({ kind: "menu" })}
           onNext={() => setView({ kind: "menu" })}
