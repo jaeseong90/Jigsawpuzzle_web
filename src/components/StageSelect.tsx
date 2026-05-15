@@ -507,8 +507,14 @@ function StageCard({
   onPlay: (s: Stage) => void;
   onLockedTap: (stageId: number) => void;
 }) {
-  const unlocked = progress ? stage.id <= progress.unlockedUpTo : stage.id === 1;
+  const sequentiallyUnlocked = progress
+    ? stage.id <= progress.unlockedUpTo
+    : stage.id === 1;
   const cleared = progress ? !!progress.cleared[stage.id] : false;
+  // A daily-cleared stage past the unlock frontier should still be
+  // replayable — the player already finished it once, refusing to let
+  // them open it again is just frustrating.
+  const playable = sequentiallyUnlocked || cleared;
   const best = progress?.bestTimes[stage.id];
   const stars = progress?.bestStars[stage.id] ?? 0;
   const mastered = cleared && stars === 3;
@@ -519,7 +525,7 @@ function StageCard({
   return (
     <button
       type="button"
-      onClick={() => (unlocked ? onPlay(stage) : onLockedTap(stage.id))}
+      onClick={() => (playable ? onPlay(stage) : onLockedTap(stage.id))}
       className="press-95 relative aspect-square rounded-xl overflow-hidden text-left"
       style={{
         background: "var(--bg-elevated)",
@@ -530,7 +536,7 @@ function StageCard({
           : cleared
           ? "1.5px solid var(--success)"
           : "1px solid var(--line)",
-        opacity: unlocked ? 1 : 0.55,
+        opacity: playable ? 1 : 0.55,
         boxShadow: isNext && !isResume
           ? "0 0 0 2px var(--accent), 0 0 0 4px var(--bg-app)"
           : "none",
@@ -546,7 +552,7 @@ function StageCard({
         className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
         style={{
           opacity: imgLoaded ? 1 : 0,
-          filter: unlocked ? "none" : "grayscale(85%) brightness(0.7)",
+          filter: playable ? "none" : "grayscale(85%) brightness(0.7)",
         }}
       />
       <div
@@ -578,7 +584,7 @@ function StageCard({
           </div>
         )}
       </div>
-      {!unlocked && (
+      {!playable && (
         <div
           className="absolute inset-0 flex items-center justify-center"
           style={{ background: "rgba(0,0,0,0.25)" }}
@@ -588,7 +594,7 @@ function StageCard({
           </span>
         </div>
       )}
-      {stage.isBoss && unlocked && !cleared && (
+      {stage.isBoss && playable && !cleared && (
         <div
           className="absolute top-1 right-1 rounded-sm px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em]"
           style={{ background: "var(--danger)", color: "#fff" }}
