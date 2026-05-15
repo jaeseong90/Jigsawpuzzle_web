@@ -159,9 +159,13 @@ body {
 
 /* --- list virtualization hint -------------------------------------- */
 
+/* Collapsed chapter strips are ~90px; expanded ones grow with their grid.
+   A small intrinsic size avoids reserving needless scroll height for the
+   common collapsed case, and the browser re-flows once the expanded grid
+   becomes visible. */
 .chapter-section {
   content-visibility: auto;
-  contain-intrinsic-size: 100% 480px;
+  contain-intrinsic-size: 100% 100px;
 }
 
 /* --- modal entry --------------------------------------------------- */
