@@ -13,14 +13,22 @@ import { emptyProgress, loadProgress, type Progress } from "@/lib/progress";
 import { listSavedGames } from "@/lib/savedGame";
 import { getStageImageDataUrl } from "@/lib/stageImage";
 import { getDailyStageId } from "@/lib/daily";
+import dynamic from "next/dynamic";
 import TutorialTip from "./TutorialTip";
-import SettingsSheet from "./SettingsSheet";
 import DailyBanner from "./DailyBanner";
 import LevelChip from "./LevelChip";
-import PhotoGallery from "./PhotoGallery";
-import StatsScreen from "./StatsScreen";
-import PersonalPhotoPicker from "./PersonalPhotoPicker";
-import InProgressSheet from "./InProgressSheet";
+
+// Modals/overlays are only mounted when the player opens them, so defer
+// their bundle splits to keep first-paint quick on the home shelf.
+const SettingsSheet = dynamic(() => import("./SettingsSheet"), { ssr: false });
+const PhotoGallery = dynamic(() => import("./PhotoGallery"), { ssr: false });
+const StatsScreen = dynamic(() => import("./StatsScreen"), { ssr: false });
+const PersonalPhotoPicker = dynamic(() => import("./PersonalPhotoPicker"), {
+  ssr: false,
+});
+const InProgressSheet = dynamic(() => import("./InProgressSheet"), {
+  ssr: false,
+});
 
 type Props = {
   progressOverride?: Progress | null;
