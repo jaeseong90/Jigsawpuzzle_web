@@ -317,23 +317,31 @@ function GalleryTile({
           style={{ opacity: loaded ? 1 : 0 }}
         />
       </div>
-      <div className="px-2 py-1.5 flex items-center justify-between">
-        <span
-          className="text-[10px] font-semibold tabular-nums"
-          style={{ color: "var(--ink-mute)" }}
+      <div className="px-2 py-1.5">
+        <div
+          className="text-[11px] font-semibold leading-tight truncate"
+          style={{ color: "var(--ink-1)" }}
         >
-          {String(stage.id).padStart(3, "0")}
-          {stage.isBoss && " · BOSS"}
-        </span>
-        <span
-          className="text-[10px]"
-          style={{ color: "var(--gold)", letterSpacing: "0.08em" }}
-        >
-          {"★".repeat(stars)}
-          <span style={{ color: "var(--ink-faint)" }}>
-            {"★".repeat(3 - stars)}
+          {stage.title}
+        </div>
+        <div className="mt-0.5 flex items-center justify-between">
+          <span
+            className="text-[10px] font-semibold tabular-nums"
+            style={{ color: "var(--ink-mute)" }}
+          >
+            {String(stage.id).padStart(3, "0")}
+            {stage.isBoss && " · BOSS"}
           </span>
-        </span>
+          <span
+            className="text-[10px]"
+            style={{ color: "var(--gold)", letterSpacing: "0.08em" }}
+          >
+            {"★".repeat(stars)}
+            <span style={{ color: "var(--ink-faint)" }}>
+              {"★".repeat(3 - stars)}
+            </span>
+          </span>
+        </div>
       </div>
     </button>
   );
