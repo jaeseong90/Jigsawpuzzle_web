@@ -67,45 +67,83 @@ export default function AchievementsRow({ ctx }: Props) {
           );
         })}
       </div>
-      {active && (
-        <div
-          className="mt-2 rounded-xl px-3 py-2 text-xs"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--line)",
-            color: "var(--ink-2)",
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-base" aria-hidden>
-              {active.icon}
-            </span>
-            <span
-              className="font-semibold"
-              style={{ color: "var(--ink-1)" }}
-            >
-              {active.title}
-            </span>
-            {ctx && active.check(ctx) && (
-              <span
-                className="ml-auto text-[10px] rounded-full px-1.5 py-0.5 font-semibold"
-                style={{
-                  background: "var(--success-soft)",
-                  color: "var(--success)",
-                }}
-              >
-                달성
+      {active && (() => {
+        const earned = ctx ? active.check(ctx) : false;
+        const prog = ctx && !earned && active.progress ? active.progress(ctx) : null;
+        const pct = prog
+          ? Math.min(100, Math.round((prog[0] / Math.max(1, prog[1])) * 100))
+          : 0;
+        return (
+          <div
+            className="mt-2 rounded-xl px-3 py-2 text-xs"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--line)",
+              color: "var(--ink-2)",
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-base" aria-hidden>
+                {active.icon}
               </span>
+              <span
+                className="font-semibold"
+                style={{ color: "var(--ink-1)" }}
+              >
+                {active.title}
+              </span>
+              {earned && (
+                <span
+                  className="ml-auto text-[10px] rounded-full px-1.5 py-0.5 font-semibold"
+                  style={{
+                    background: "var(--success-soft)",
+                    color: "var(--success)",
+                  }}
+                >
+                  달성
+                </span>
+              )}
+            </div>
+            <div
+              className="mt-0.5"
+              style={{ color: "var(--ink-mute)" }}
+            >
+              {active.description}
+            </div>
+            {prog && (
+              <div className="mt-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span
+                    className="text-[10px] font-semibold tabular-nums"
+                    style={{ color: "var(--ink-mute)" }}
+                  >
+                    진행도
+                  </span>
+                  <span
+                    className="text-[10px] font-bold tabular-nums"
+                    style={{ color: "var(--ink-1)" }}
+                  >
+                    {prog[0].toLocaleString()} / {prog[1].toLocaleString()}
+                  </span>
+                </div>
+                <div
+                  className="h-1 rounded-full overflow-hidden"
+                  style={{ background: "var(--bg-surface)" }}
+                >
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${pct}%`,
+                      background: "var(--gold)",
+                      transition: "width 400ms cubic-bezier(0.2,0.8,0.2,1)",
+                    }}
+                  />
+                </div>
+              </div>
             )}
           </div>
-          <div
-            className="mt-0.5"
-            style={{ color: "var(--ink-mute)" }}
-          >
-            {active.description}
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

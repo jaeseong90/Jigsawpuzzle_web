@@ -14,6 +14,10 @@ export type Achievement = {
   title: string;
   description: string;
   check: (ctx: AchievementContext) => boolean;
+  // Optional progress reading for the badge detail card. Returns
+  // [current, target] so the UI can render "현재 7 / 10". Skip when the
+  // achievement is a single binary event (e.g., first clear).
+  progress?: (ctx: AchievementContext) => [number, number];
 };
 
 function clearedCount(p: Progress): number {
@@ -51,6 +55,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "탄력 받기",
     description: "10 스테이지 클리어",
     check: ({ progress }) => clearedCount(progress) >= 10,
+    progress: ({ progress }) => [clearedCount(progress), 10],
   },
   {
     id: "fifty-clears",
@@ -58,6 +63,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "실력자",
     description: "50 스테이지 클리어",
     check: ({ progress }) => clearedCount(progress) >= 50,
+    progress: ({ progress }) => [clearedCount(progress), 50],
   },
   {
     id: "hundred-clears",
@@ -65,6 +71,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "마라톤",
     description: "100 스테이지 클리어",
     check: ({ progress }) => clearedCount(progress) >= 100,
+    progress: ({ progress }) => [clearedCount(progress), 100],
   },
   {
     id: "five-hundred-clears",
@@ -72,6 +79,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "전설의 여행자",
     description: "500 스테이지 클리어",
     check: ({ progress }) => clearedCount(progress) >= 500,
+    progress: ({ progress }) => [clearedCount(progress), 500],
   },
   {
     id: "first-boss",
@@ -86,6 +94,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "보스 마스터",
     description: "보스 10회 격파",
     check: ({ progress }) => bossesCleared(progress) >= 10,
+    progress: ({ progress }) => [bossesCleared(progress), 10],
   },
   {
     id: "first-three-star",
@@ -100,6 +109,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "빠른 손",
     description: "3성 클리어 10회",
     check: ({ progress }) => threeStarCount(progress) >= 10,
+    progress: ({ progress }) => [threeStarCount(progress), 10],
   },
   {
     id: "fifty-three-stars",
@@ -107,6 +117,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "완벽주의자",
     description: "3성 클리어 50회",
     check: ({ progress }) => threeStarCount(progress) >= 50,
+    progress: ({ progress }) => [threeStarCount(progress), 50],
   },
   {
     id: "daily-streak-7",
@@ -114,6 +125,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "일주일의 의식",
     description: "데일리 7일 연속",
     check: ({ daily }) => (daily?.bestStreak ?? 0) >= 7,
+    progress: ({ daily }) => [daily?.bestStreak ?? 0, 7],
   },
   {
     id: "daily-streak-30",
@@ -121,6 +133,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "달인의 한 달",
     description: "데일리 30일 연속",
     check: ({ daily }) => (daily?.bestStreak ?? 0) >= 30,
+    progress: ({ daily }) => [daily?.bestStreak ?? 0, 30],
   },
   {
     id: "daily-50",
@@ -128,6 +141,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "출석의 달인",
     description: "데일리 50회 누적 클리어",
     check: ({ daily }) => (daily?.totalCleared ?? 0) >= 50,
+    progress: ({ daily }) => [daily?.totalCleared ?? 0, 50],
   },
   {
     id: "personal-3",
@@ -135,6 +149,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "내 풍경 수집",
     description: "내 사진 3장 등록",
     check: ({ personalCount = 0 }) => personalCount >= 3,
+    progress: ({ personalCount = 0 }) => [personalCount, 3],
   },
   {
     id: "personal-10",
@@ -142,6 +157,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "나만의 갤러리",
     description: "내 사진 10장 등록",
     check: ({ personalCount = 0 }) => personalCount >= 10,
+    progress: ({ personalCount = 0 }) => [personalCount, 10],
   },
   {
     id: "flow-8",
@@ -149,6 +165,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "흐름을 탔다",
     description: "한 판에 연속 8회 스냅",
     check: ({ progress }) => (progress.lifetimeBestFlow ?? 0) >= 8,
+    progress: ({ progress }) => [progress.lifetimeBestFlow ?? 0, 8],
   },
   {
     id: "flow-15",
@@ -156,6 +173,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "물 흐르듯",
     description: "한 판에 연속 15회 스냅",
     check: ({ progress }) => (progress.lifetimeBestFlow ?? 0) >= 15,
+    progress: ({ progress }) => [progress.lifetimeBestFlow ?? 0, 15],
   },
   {
     id: "flow-25",
@@ -163,6 +181,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "흐름의 달인",
     description: "한 판에 연속 25회 스냅",
     check: ({ progress }) => (progress.lifetimeBestFlow ?? 0) >= 25,
+    progress: ({ progress }) => [progress.lifetimeBestFlow ?? 0, 25],
   },
   {
     id: "tessera-collector",
@@ -170,6 +189,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "테세라 수집가",
     description: "누적 1,000 테세라 모음",
     check: ({ progress }) => earnedTessera(progress) >= 1000,
+    progress: ({ progress }) => [earnedTessera(progress), 1000],
   },
   {
     id: "palette-master",
@@ -177,6 +197,7 @@ export const ACHIEVEMENTS: ReadonlyArray<Achievement> = [
     title: "팔레트의 주인",
     description: "모든 팔레트 잠금해제 (1,680)",
     check: ({ progress }) => (progress.tesseraSpent ?? 0) >= 1680,
+    progress: ({ progress }) => [progress.tesseraSpent ?? 0, 1680],
   },
 ];
 
